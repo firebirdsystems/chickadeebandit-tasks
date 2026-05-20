@@ -1,0 +1,23 @@
+{
+  "id": "tasks",
+  "name": "Tasks",
+  "version": "2.0.0",
+  "description": "Full-featured family task manager. Create tasks with due dates, priorities, labels, recurrence, and subtasks. Assign to family members. Also syncs with Google Tasks and Apple Reminders.",
+  "entrypoint": "index.html",
+  "runtime": "static",
+  "category": "productivity",
+  "tags": ["tasks", "reminders", "todo", "lists", "recurrence", "google", "apple"],
+  "data_access": {
+    "reads": ["family.members"],
+    "writes": []
+  },
+  "permissions": {
+    "default_audience": "everyone",
+    "requires_approval": false
+  },
+  "storage": "db",
+  "nav": { "label": "Tasks", "icon": "✅" },
+  "resource_limits": {
+    "max_db_bytes": 104857600
+  }
+}

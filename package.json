@@ -1,0 +1,10 @@
+{
+  "name": "chickadee-app-tasks",
+  "version": "1.0.0",
+  "description": "Tasks app for Chickadee Bandit — synced from Google Tasks or Apple Reminders",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "license": "MIT"
+}

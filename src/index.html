@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base href="/run/tasks/" />
+  <title>Tasks</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:           var(--hub-bg, #f9fafb);
+      --card:         var(--hub-surface, #ffffff);
+      --border:       var(--hub-border, #e5e7eb);
+      --border-mid:   var(--hub-border, #d1d5db);
+      --text:         var(--hub-text, #111827);
+      --muted:        var(--hub-text-muted, #6b7280);
+      --accent:       var(--hub-primary, #111827);
+      --accent-fg:    var(--hub-primary-fg, #ffffff);
+      --accent-hover: var(--hub-primary-hover, #374151);
+      --accent-light: #f3f4f6;
+      --green: #16a34a; --amber: #d97706; --red: #dc2626;
+      --radius:       var(--hub-radius, 0.5rem);
+      --shadow:       0 1px 3px rgba(0,0,0,.07);
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; }
+    .app { max-width: 680px; margin: 0 auto; padding: 20px 16px 60px; }
+
+    /* Header */
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .header h1 { font-size: 1.5rem; font-weight: 700; }
+    .header-actions { display: flex; gap: 8px; }
+    .btn-primary { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: .5; cursor: default; }
+    .btn-ghost { background: #fff; color: var(--muted); border: 1.5px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm { padding: 5px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); background: #fff; color: var(--muted); }
+    .btn-sm:hover { border-color: var(--accent); color: var(--text); }
+    .btn-sm:disabled { opacity: .5; cursor: default; }
+    .btn-danger { background: #fee2e2; color: var(--red); border: none; border-radius: 6px; padding: 7px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+    .btn-danger:hover { background: #fecaca; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 16px; }
+    .tab { padding: 8px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px; background: transparent; border-left: none; border-right: none; border-top: none; }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* Filter chips */
+    .filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+    .chip { padding: 5px 13px; border-radius: 20px; border: 1.5px solid var(--border); background: #fff; font-size: 0.8rem; font-weight: 500; cursor: pointer; color: var(--muted); }
+    .chip.active { border-color: var(--accent); background: var(--accent-light); color: var(--accent); font-weight: 600; }
+    .chip:hover:not(.active) { border-color: #c7d2fe; }
+
+    /* Quick add */
+    .quick-add { display: flex; gap: 8px; margin-bottom: 16px; }
+    .quick-add input { flex: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--card); color: var(--text); outline: none; }
+    .quick-add input:focus { border-color: var(--accent); }
+    .quick-add input::placeholder { color: var(--muted); }
+
+    /* List sidebar area */
+    .lists-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+    .list-pill { padding: 4px 12px; border-radius: 16px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1.5px solid transparent; background: #f3f4f6; color: var(--muted); }
+    .list-pill.active { color: #fff; }
+    .list-pill:hover:not(.active) { border-color: var(--border); background: #e5e7eb; }
+    .list-pill-add { padding: 4px 10px; border-radius: 16px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1.5px dashed var(--border); background: transparent; color: var(--muted); }
+    .list-pill-add:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Task group */
+    .task-group { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; background: var(--card); box-shadow: var(--shadow); }
+    .task-group-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #f9fafb; border-bottom: 1px solid var(--border); }
+    .task-group-header .member { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.88rem; }
+    .task-count { font-size: 0.76rem; color: var(--muted); }
+
+    /* Task row */
+    .task-row { display: flex; align-items: flex-start; gap: 0; padding: 0; border-bottom: 1px solid var(--border); cursor: pointer; background: var(--card); transition: background .1s; }
+    .task-row:last-child { border-bottom: none; }
+    .task-row:hover { background: #fafafa; }
+    .task-row.done-row { opacity: .65; }
+    .priority-bar { width: 4px; flex-shrink: 0; align-self: stretch; border-radius: 0; }
+    .task-row-inner { display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px; flex: 1; min-width: 0; }
+    .check { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 11px; background: transparent; margin-top: 2px; }
+    .check.done { background: var(--green); border-color: var(--green); color: #fff; }
+    .check.overdue-check { border-color: var(--red); }
+    .check:not(.done):hover { border-color: var(--accent); }
+    .task-body { flex: 1; min-width: 0; }
+    .task-title { font-size: 0.9rem; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .task-title.done { text-decoration: line-through; color: var(--muted); }
+    .task-sub { font-size: 0.75rem; color: var(--muted); margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .task-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-top: 2px; }
+    .due-badge { font-size: 0.72rem; font-weight: 600; padding: 2px 7px; border-radius: 10px; background: #f3f4f6; color: var(--muted); white-space: nowrap; }
+    .due-badge.today { background: #dbeafe; color: #1d4ed8; }
+    .due-badge.overdue { background: #fee2e2; color: var(--red); }
+    .due-badge.tomorrow { background: #dcfce7; color: #15803d; }
+    .avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .tag { font-size: 0.68rem; padding: 1px 6px; border-radius: 8px; background: #f3f4f6; color: var(--muted); }
+    .subtask-count { font-size: 0.72rem; color: var(--muted); display: flex; align-items: center; gap: 3px; }
+
+    /* Avatar large */
+    .avatar-lg { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: #fff; }
+
+    /* Empty / loading */
+    .empty { text-align: center; padding: 48px 20px; color: var(--muted); }
+    .empty h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .empty p { font-size: 0.85rem; line-height: 1.6; }
+    .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 0.9rem; }
+
+    /* Connections */
+    .conn-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: var(--shadow); }
+    .conn-info .name { font-weight: 500; font-size: 0.9rem; }
+    .conn-info .meta { font-size: 0.78rem; color: var(--muted); margin-top: 3px; display: flex; align-items: center; gap: 6px; }
+    .conn-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .provider-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.73rem; padding: 2px 8px; border-radius: 12px; background: #f3f4f6; color: var(--muted); }
+
+    /* Modal overlay */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
+    @media (min-width: 600px) { .modal-overlay { align-items: center; } }
+    .modal { background: var(--card); border-radius: 16px 16px 0 0; width: 100%; max-width: 600px; max-height: 92vh; overflow-y: auto; padding: 0; }
+    @media (min-width: 600px) { .modal { border-radius: 16px; max-height: 85vh; } }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 14px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--card); z-index: 1; }
+    .modal-title { font-size: 1rem; font-weight: 700; }
+    .modal-close { font-size: 1.3rem; background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px 8px; border-radius: 6px; line-height: 1; }
+    .modal-close:hover { background: #f3f4f6; }
+    .modal-body { padding: 20px; }
+    .modal-footer { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-top: 1px solid var(--border); gap: 8px; }
+
+    /* Form fields */
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+    .field input, .field textarea, .field select { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--card); color: var(--text); outline: none; font-family: inherit; }
+    .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
+    .field textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+    /* Priority selector */
+    .priority-opts { display: flex; gap: 6px; }
+    .priority-opt { flex: 1; padding: 7px; border-radius: 7px; border: 1.5px solid var(--border); background: #fff; font-size: 0.78rem; font-weight: 600; cursor: pointer; text-align: center; color: var(--muted); }
+    .priority-opt.sel-none { border-color: var(--border); background: #f9fafb; color: var(--muted); }
+    .priority-opt.sel-low { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
+    .priority-opt.sel-med { border-color: var(--amber); background: #fffbeb; color: var(--amber); }
+    .priority-opt.sel-high { border-color: var(--red); background: #fee2e2; color: var(--red); }
+
+    /* Color picker */
+    .color-opts { display: flex; gap: 8px; }
+    .color-dot { width: 26px; height: 26px; border-radius: 50%; cursor: pointer; border: 2.5px solid transparent; }
+    .color-dot.sel { border-color: var(--text); }
+
+    /* Recurrence */
+    .recur-section { background: #f9fafb; border-radius: 8px; padding: 12px; margin-top: 8px; }
+    .day-toggles { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+    .day-btn { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--border); background: #fff; font-size: 0.72rem; font-weight: 700; cursor: pointer; color: var(--muted); display: flex; align-items: center; justify-content: center; }
+    .day-btn.on { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+
+    /* Labels */
+    .label-input-wrap { display: flex; gap: 6px; }
+    .labels-list { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+    .label-tag { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; padding: 3px 8px; border-radius: 10px; background: #f3f4f6; color: var(--muted); }
+    .label-tag button { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.8rem; padding: 0; line-height: 1; }
+    .label-tag button:hover { color: var(--red); }
+
+    /* Subtasks */
+    .subtask-list { list-style: none; margin-bottom: 10px; }
+    .subtask-item { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+    .subtask-item:last-child { border-bottom: none; }
+    .subtask-title { flex: 1; font-size: 0.88rem; }
+    .subtask-title.done { text-decoration: line-through; color: var(--muted); }
+    .check-sm { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 9px; background: transparent; }
+    .check-sm.done { background: var(--green); border-color: var(--green); color: #fff; }
+    .check-sm:not(.done):hover { border-color: var(--accent); }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1f2937; color: #fff; padding: 11px 20px; border-radius: 10px; font-size: 0.85rem; z-index: 999; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+    .toast button { background: none; border: none; color: #a5b4fc; font-size: 0.82rem; font-weight: 600; cursor: pointer; padding: 0; }
+    .toast button:hover { color: #c7d2fe; }
+
+    /* Section label */
+    .section-label { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 16px 0 8px; }
+
+    /* Login notice */
+    .login-notice { text-align: center; padding: 60px 20px; }
+    .login-notice h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
+    .login-notice p { color: var(--muted); font-size: 0.88rem; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>Tasks</h1>
+    <div class="header-actions">
+      <button class="btn-ghost" id="sync-btn" onclick="syncAll()">Sync now</button>
+      <button class="btn-primary" onclick="openNewTask()">+ New</button>
+    </div>
+  </div>
+  <div id="root"><div class="loading">Loading…</div></div>
+</div>
+
+<!-- Task detail / edit modal -->
+<div id="task-modal" style="display:none" class="modal-overlay" onclick="modalOverlayClick(event)">
+  <div class="modal" id="task-modal-box">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">New Task</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- List modal -->
+<div id="list-modal" style="display:none" class="modal-overlay" onclick="listModalOverlayClick(event)">
+  <div class="modal" id="list-modal-box" style="max-width:400px">
+    <div class="modal-header">
+      <span class="modal-title" id="list-modal-title">New List</span>
+      <button class="modal-close" onclick="closeListModal()">×</button>
+    </div>
+    <div class="modal-body" id="list-modal-body"></div>
+    <div class="modal-footer" id="list-modal-footer"></div>
+  </div>
+</div>
+
+<script type="module">
+import { memberColor, initial, esc, isAdult } from "/hub-sdk.js";
+
+const CONTEXT = window.__CONTEXT_URL ?? "";
+const DB      = window.__DB_URL ?? "";
+const ME      = window.__CURRENT_MEMBER ?? null;
+const APP_ID  = window.__APP_ID ?? "tasks";
+
+const PRIORITY_COLORS = { 0: "transparent", 1: "#2563eb", 2: "#d97706", 3: "#dc2626" };
+const PRIORITY_LABELS = { 0: "None", 1: "Low", 2: "Med", 3: "High" };
+const PRIORITY_CLASSES = { 0: "sel-none", 1: "sel-low", 2: "sel-med", 3: "sel-high" };
+const LIST_COLORS = ["#4f46e5","#0891b2","#16a34a","#d97706","#dc2626","#7c3aed"];
+const DAYS = ["sun","mon","tue","wed","thu","fri","sat"];
+const DAY_LABELS = ["S","M","T","W","T","F","S"];
+
+// State
+let members = [], syncedTasks = [], connections = [];
+let localLists = [], localTasks = [], localSubtasks = [];
+let activeTab = "mine";
+let mineFilter = "all";
+let activeListId = null;
+let modalTask = null;       // task being edited
+let modalIsNew = false;
+let listModalData = null;   // list being edited
+let toastTimer = null;
+let undoData = null;        // {task, action}
+
+// ── DB ────────────────────────────────────────────────────────────────────────
+async function dbRun(sql, params = []) {
+  if (!DB) return { rows: [] };
+  try {
+    const res = await fetch(DB, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sql, params }),
+    });
+    return await res.json();
+  } catch { return { rows: [] }; }
+}
+
+async function initDB() {
+  await dbRun(`CREATE TABLE IF NOT EXISTS lists (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, color TEXT NOT NULL DEFAULT '#4f46e5',
+    member_id TEXT, sort_order INTEGER DEFAULT 0, created_at TEXT NOT NULL
+  )`);
+  await dbRun(`CREATE TABLE IF NOT EXISTS tasks (
+    id TEXT PRIMARY KEY, list_id TEXT, title TEXT NOT NULL, notes TEXT DEFAULT '',
+    assignee_id TEXT, due_date TEXT, due_time TEXT,
+    priority INTEGER DEFAULT 0,
+    labels TEXT DEFAULT '[]',
+    recurrence TEXT,
+    completed INTEGER DEFAULT 0, completed_at TEXT,
+    parent_id TEXT,
+    created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+  )`);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function now() { return new Date().toISOString(); }
+function todayStr() { return new Date().toISOString().split("T")[0]; }
+
+function memberById(id) { return members.find(m => m.id === id); }
+function memberName(id) { return memberById(id)?.name ?? "Unknown"; }
+function mcolor(id) { return memberColor(id, members); }
+
+function isOverdue(t) {
+  if (t.completed || !t.due_date) return false;
+  return t.due_date < todayStr();
+}
+function isToday(t) { return t.due_date === todayStr(); }
+function isTomorrow(t) {
+  const d = new Date(); d.setDate(d.getDate() + 1);
+  return t.due_date === d.toISOString().split("T")[0];
+}
+function isUpcoming(t) {
+  if (!t.due_date || t.completed) return false;
+  return t.due_date > todayStr();
+}
+
+function formatDue(t) {
+  if (!t.due_date) return null;
+  if (isOverdue(t)) return { label: "Overdue", cls: "overdue" };
+  if (isToday(t)) return { label: "Today", cls: "today" };
+  if (isTomorrow(t)) return { label: "Tomorrow", cls: "tomorrow" };
+  const d = new Date(t.due_date + "T00:00:00");
+  return { label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }), cls: "" };
+}
+
+function parseLabels(s) {
+  try { return JSON.parse(s || "[]"); } catch { return []; }
+}
+
+function nextDueDate(dueDate, rule) {
+  if (!dueDate || !rule) return null;
+  const d = new Date(dueDate + "T00:00:00");
+  const { freq, interval = 1 } = rule;
+  if (freq === "daily") {
+    d.setDate(d.getDate() + interval);
+  } else if (freq === "weekly") {
+    if (rule.days?.length > 1) {
+      const order = DAYS;
+      const sel = rule.days.map(x => order.indexOf(x)).sort((a,b) => a-b);
+      const cur = d.getDay();
+      const next = sel.find(x => x > cur);
+      if (next != null) d.setDate(d.getDate() + (next - cur));
+      else d.setDate(d.getDate() + (7 * interval - cur + sel[0]));
+    } else { d.setDate(d.getDate() + 7 * interval); }
+  } else if (freq === "monthly") {
+    d.setMonth(d.getMonth() + interval);
+  } else if (freq === "yearly") {
+    d.setFullYear(d.getFullYear() + interval);
+  }
+  return d.toISOString().split("T")[0];
+}
+
+// ── Load data ─────────────────────────────────────────────────────────────────
+async function load() {
+  await initDB();
+  const [ctxRes, tasksRes, connRes, listsRes, localRes] = await Promise.all([
+    fetch(`${CONTEXT}?keys=family.members`).then(r => r.json()).catch(() => ({ "family.members": [] })),
+    fetch("/api/tasks").then(r => r.json()).catch(() => []),
+    fetch("/api/tasks/connections").then(r => r.json()).catch(() => []),
+    dbRun("SELECT * FROM lists ORDER BY sort_order, created_at"),
+    dbRun("SELECT * FROM tasks WHERE parent_id IS NULL ORDER BY due_date, priority DESC, created_at"),
+  ]);
+  members     = ctxRes["family.members"] ?? [];
+  syncedTasks = Array.isArray(tasksRes) ? tasksRes : [];
+  connections = Array.isArray(connRes)  ? connRes  : [];
+  localLists  = listsRes.rows ?? [];
+  localTasks  = localRes.rows ?? [];
+
+  // Load subtasks
+  const subRes = await dbRun("SELECT * FROM tasks WHERE parent_id IS NOT NULL ORDER BY created_at");
+  localSubtasks = subRes.rows ?? [];
+
+  render();
+}
+
+async function reloadLocal() {
+  const [listsRes, localRes, subRes] = await Promise.all([
+    dbRun("SELECT * FROM lists ORDER BY sort_order, created_at"),
+    dbRun("SELECT * FROM tasks WHERE parent_id IS NULL ORDER BY due_date, priority DESC, created_at"),
+    dbRun("SELECT * FROM tasks WHERE parent_id IS NOT NULL ORDER BY created_at"),
+  ]);
+  localLists    = listsRes.rows ?? [];
+  localTasks    = localRes.rows ?? [];
+  localSubtasks = subRes.rows ?? [];
+}
+
+// ── Task CRUD ─────────────────────────────────────────────────────────────────
+async function createTask(fields) {
+  const id = uid();
+  const ts = now();
+  await dbRun(
+    `INSERT INTO tasks (id,list_id,title,notes,assignee_id,due_date,due_time,priority,labels,recurrence,completed,parent_id,created_by,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?,?,?)`,
+    [id, fields.list_id||null, fields.title, fields.notes||"",
+     fields.assignee_id||null, fields.due_date||null, fields.due_time||null,
+     fields.priority||0, JSON.stringify(fields.labels||[]),
+     fields.recurrence ? JSON.stringify(fields.recurrence) : null,
+     fields.parent_id||null, ME?.id||null, ts, ts]
+  );
+  return id;
+}
+
+async function updateTask(id, fields) {
+  const sets = Object.keys(fields).map(k => `${k}=?`).join(",");
+  const vals = Object.values(fields);
+  await dbRun(`UPDATE tasks SET ${sets}, updated_at=? WHERE id=?`, [...vals, now(), id]);
+}
+
+async function deleteTask(id) {
+  await dbRun("DELETE FROM tasks WHERE id=? OR parent_id=?", [id, id]);
+}
+
+async function completeTask(id) {
+  const task = localTasks.find(t => t.id === id);
+  if (!task) return;
+  const wasCompleted = !!task.completed;
+  const newCompleted = wasCompleted ? 0 : 1;
+  const completedAt  = newCompleted ? now() : null;
+
+  await updateTask(id, { completed: newCompleted, completed_at: completedAt });
+
+  // Handle recurrence: when marking complete, clone with next due date
+  if (newCompleted && task.recurrence && task.due_date) {
+    try {
+      const rule = JSON.parse(task.recurrence);
+      const nextDate = nextDueDate(task.due_date, rule);
+      if (nextDate) {
+        await createTask({
+          list_id: task.list_id,
+          title: task.title,
+          notes: task.notes,
+          assignee_id: task.assignee_id,
+          due_date: nextDate,
+          due_time: task.due_time,
+          priority: task.priority,
+          labels: parseLabels(task.labels),
+          recurrence: rule,
+          parent_id: null,
+        });
+      }
+    } catch {}
+  }
+
+  await reloadLocal();
+  render();
+
+  // Undo toast
+  showToast(
+    newCompleted ? "Task completed" : "Marked incomplete",
+    newCompleted ? "Undo" : null,
+    async () => {
+      await updateTask(id, { completed: wasCompleted ? 1 : 0, completed_at: wasCompleted ? task.completed_at : null });
+      await reloadLocal(); render();
+    }
+  );
+}
+
+// ── List CRUD ─────────────────────────────────────────────────────────────────
+async function createList(name, color, memberId) {
+  const id = uid();
+  await dbRun(
+    "INSERT INTO lists (id,name,color,member_id,sort_order,created_at) VALUES (?,?,?,?,?,?)",
+    [id, name, color, memberId||null, localLists.length, now()]
+  );
+  return id;
+}
+
+async function updateList(id, fields) {
+  const sets = Object.keys(fields).map(k => `${k}=?`).join(",");
+  await dbRun(`UPDATE lists SET ${sets} WHERE id=?`, [...Object.values(fields), id]);
+}
+
+async function deleteList(id) {
+  await dbRun("UPDATE tasks SET list_id=NULL WHERE list_id=?", [id]);
+  await dbRun("DELETE FROM lists WHERE id=?", [id]);
+}
+
+// ── Synced (existing) ─────────────────────────────────────────────────────────
+async function toggleSyncedTask(id) {
+  const task = syncedTasks.find(t => t.id === id);
+  if (!task) return;
+  task.completed = !task.completed;
+  render();
+  await fetch(`/api/tasks/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ completed: task.completed }),
+  }).catch(() => {});
+}
+
+async function syncAll() {
+  const btn = document.getElementById("sync-btn");
+  if (!btn) return;
+  btn.disabled = true; btn.textContent = "Syncing…";
+  await Promise.all(connections.map(c =>
+    fetch(`/api/tasks/connections/${c.id}/sync`, { method: "POST" }).catch(() => {})
+  ));
+  const [tasksRes, connRes] = await Promise.all([
+    fetch("/api/tasks").then(r => r.json()).catch(() => []),
+    fetch("/api/tasks/connections").then(r => r.json()).catch(() => []),
+  ]);
+  syncedTasks = Array.isArray(tasksRes) ? tasksRes : [];
+  connections = Array.isArray(connRes)  ? connRes  : [];
+  btn.disabled = false; btn.textContent = "Sync now";
+  render();
+  showToast("Synced");
+}
+
+async function syncConnection(id) {
+  await fetch(`/api/tasks/connections/${id}/sync`, { method: "POST" }).catch(() => {});
+  const [tasksRes, connRes] = await Promise.all([
+    fetch("/api/tasks").then(r => r.json()).catch(() => []),
+    fetch("/api/tasks/connections").then(r => r.json()).catch(() => []),
+  ]);
+  syncedTasks = Array.isArray(tasksRes) ? tasksRes : [];
+  connections = Array.isArray(connRes)  ? connRes  : [];
+  render();
+  showToast("Synced");
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(msg, undoLabel, undoFn) {
+  clearTimeout(toastTimer);
+  document.querySelectorAll(".toast").forEach(el => el.remove());
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.innerHTML = `<span>${esc(msg)}</span>`;
+  if (undoLabel && undoFn) {
+    const btn = document.createElement("button");
+    btn.textContent = undoLabel;
+    btn.onclick = () => { el.remove(); undoFn(); };
+    el.appendChild(btn);
+  }
+  document.body.appendChild(el);
+  toastTimer = setTimeout(() => el.remove(), 3000);
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+function filterLocalTasks() {
+  let tasks = localTasks.filter(t => !t.parent_id);
+  const meId = ME?.id;
+
+  if (activeTab === "mine") {
+    // My tasks: I'm assignee or creator
+    if (meId) tasks = tasks.filter(t => t.assignee_id === meId || (!t.assignee_id && t.created_by === meId) || (!t.assignee_id && !t.created_by));
+    if (activeListId) tasks = tasks.filter(t => t.list_id === activeListId);
+    if (mineFilter === "today")    tasks = tasks.filter(t => !t.completed && isToday(t));
+    else if (mineFilter === "upcoming") tasks = tasks.filter(t => !t.completed && isUpcoming(t));
+    else if (mineFilter === "overdue")  tasks = tasks.filter(t => !t.completed && isOverdue(t));
+    else if (mineFilter === "done")     tasks = tasks.filter(t => !!t.completed);
+    else tasks = tasks.filter(t => !t.completed); // "all" = incomplete
+  } else if (activeTab === "family") {
+    // Adults see all; children see only their own
+    if (!ME || (!isAdult(ME, members) && meId)) {
+      tasks = tasks.filter(t => t.assignee_id === meId || t.created_by === meId);
+    }
+    tasks = tasks.filter(t => !t.completed);
+  }
+
+  return tasks.sort((a, b) => {
+    const aDate = a.due_date || "9999";
+    const bDate = b.due_date || "9999";
+    if (aDate !== bDate) return aDate.localeCompare(bDate);
+    return (b.priority || 0) - (a.priority || 0);
+  });
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderPriorityBar(p) {
+  const c = PRIORITY_COLORS[p || 0];
+  return `<div class="priority-bar" style="background:${c}"></div>`;
+}
+
+function renderTaskRow(t) {
+  const due = formatDue(t);
+  const labels = parseLabels(t.labels);
+  const subs = localSubtasks.filter(s => s.parent_id === t.id);
+  const subsTotal = subs.length, subsDone = subs.filter(s => s.completed).length;
+  const assignee = memberById(t.assignee_id);
+  const overdue = isOverdue(t);
+
+  return `
+    <div class="task-row ${t.completed ? 'done-row' : ''}" onclick="openTask('${t.id}')">
+      ${renderPriorityBar(t.priority)}
+      <div class="task-row-inner">
+        <button class="check ${t.completed ? 'done' : ''} ${overdue ? 'overdue-check' : ''}"
+          onclick="event.stopPropagation();completeTask('${t.id}')">
+          ${t.completed ? "✓" : ""}
+        </button>
+        <div class="task-body">
+          <div class="task-title ${t.completed ? 'done' : ''}">${esc(t.title)}</div>
+          <div class="task-sub">
+            ${subsTotal > 0 ? `<span class="subtask-count">☑ ${subsDone}/${subsTotal}</span>` : ""}
+            ${labels.map(l => `<span class="tag">${esc(l)}</span>`).join("")}
+          </div>
+        </div>
+        <div class="task-right">
+          ${due ? `<span class="due-badge ${due.cls}">${esc(due.label)}</span>` : ""}
+          ${assignee ? `<div class="avatar" style="background:${mcolor(assignee.id)}" title="${esc(assignee.name)}">${initial(assignee.name)}</div>` : ""}
+          ${t.list_id ? (() => { const l = localLists.find(x => x.id === t.list_id); return l ? `<span class="tag" style="background:${l.color}18;color:${l.color}">${esc(l.name)}</span>` : ""; })() : ""}
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderMineTab() {
+  const tasks = filterLocalTasks();
+  const visibleLists = localLists.filter(l => !l.member_id || l.member_id === ME?.id);
+
+  return `
+    <div class="filter-bar">
+      ${["all","today","upcoming","overdue","done"].map(f =>
+        `<button class="chip ${mineFilter===f?'active':''}" onclick="setMineFilter('${f}')">${f[0].toUpperCase()+f.slice(1)}</button>`
+      ).join("")}
+    </div>
+    ${visibleLists.length > 0 ? `
+    <div class="lists-row">
+      <span style="font-size:.75rem;font-weight:600;color:var(--muted)">Lists:</span>
+      <button class="list-pill ${!activeListId?'active':''}" style="${!activeListId?'background:var(--accent);color:#fff':''}" onclick="setActiveList(null)">All</button>
+      ${visibleLists.map(l => `
+        <button class="list-pill ${activeListId===l.id?'active':''}"
+          style="${activeListId===l.id?`background:${l.color};color:#fff`:''}"
+          onclick="setActiveList('${l.id}')">${esc(l.name)}</button>
+      `).join("")}
+      <button class="list-pill-add" onclick="openNewList()">+ List</button>
+    </div>` : `<div class="lists-row"><button class="list-pill-add" onclick="openNewList()">+ New List</button></div>`}
+    <div class="quick-add">
+      <input type="text" placeholder="Quick add task… press Enter" id="quick-input" onkeydown="quickAdd(event)" />
+    </div>
+    ${tasks.length === 0 ? `
+      <div class="empty">
+        <h3>${mineFilter === "done" ? "No completed tasks" : "No tasks"}</h3>
+        <p>${mineFilter === "done" ? "Completed tasks will appear here." : "Use the quick add above or tap + New to create a task."}</p>
+      </div>` :
+      `<div class="task-group">${tasks.map(renderTaskRow).join("")}</div>`
+    }`;
+}
+
+function renderFamilyTab() {
+  const tasks = filterLocalTasks();
+  if (!ME) return `<div class="login-notice"><h2>Please log in</h2><p>Sign in to see family tasks.</p></div>`;
+
+  // Group by assignee
+  const grouped = {};
+  for (const t of tasks) {
+    const key = t.assignee_id || t.created_by || "unassigned";
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(t);
+  }
+
+  if (tasks.length === 0) return `<div class="empty"><h3>No family tasks</h3><p>Tasks assigned to family members will appear here.</p></div>`;
+
+  return Object.entries(grouped).map(([membId, mtasks]) => {
+    const m = memberById(membId);
+    const open = mtasks.filter(t => !t.completed).length;
+    return `
+      <div class="task-group">
+        <div class="task-group-header">
+          <div class="member">
+            ${m ? `<div class="avatar-lg" style="background:${mcolor(membId)}">${initial(m.name)}</div>${esc(m.name)}` : `<div class="avatar-lg" style="background:#9ca3af">?</div>Unassigned`}
+          </div>
+          <span class="task-count">${open} open</span>
+        </div>
+        ${mtasks.map(renderTaskRow).join("")}
+      </div>`;
+  }).join("");
+}
+
+function renderSyncedTab() {
+  if (syncedTasks.length === 0 && connections.length === 0) {
+    return `<div class="empty">
+      <h3>No synced tasks</h3>
+      <p>Connect Google Tasks or Apple Reminders in the <strong>Connections</strong> tab to sync your tasks here.</p>
+    </div>`;
+  }
+  if (syncedTasks.length === 0) {
+    return `<div class="empty"><p>No synced tasks yet. Try "Sync now".</p></div>`;
+  }
+
+  // Group by member
+  const memberIds = [...new Set(syncedTasks.map(t => t.family_member_id))];
+  return memberIds.map(memberId => {
+    const mTasks = syncedTasks
+      .filter(t => t.family_member_id === memberId)
+      .sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        const aOver = !a.completed && a.due_at && new Date(a.due_at) < new Date();
+        const bOver = !b.completed && b.due_at && new Date(b.due_at) < new Date();
+        if (aOver !== bOver) return aOver ? -1 : 1;
+        if (a.due_at && b.due_at) return a.due_at.localeCompare(b.due_at);
+        return a.due_at ? -1 : b.due_at ? 1 : 0;
+      });
+    const open = mTasks.filter(t => !t.completed).length;
+    const m = memberById(memberId);
+    return `
+      <div class="task-group">
+        <div class="task-group-header">
+          <div class="member">
+            ${m ? `<div class="avatar-lg" style="background:${mcolor(memberId)}">${initial(m.name)}</div>${esc(m.name)}` : memberId}
+          </div>
+          <span class="task-count">${open} open · ${mTasks.length} total</span>
+        </div>
+        ${mTasks.map(t => {
+          const overdue = !t.completed && t.due_at && new Date(t.due_at) < new Date();
+          const today = t.due_at && new Date(t.due_at).toDateString() === new Date().toDateString();
+          let dueLabel = null, dueCls = "";
+          if (t.due_at && !t.completed) {
+            const d = new Date(t.due_at);
+            const tom = new Date(); tom.setDate(tom.getDate()+1);
+            if (overdue) { dueLabel = "Overdue"; dueCls = "overdue"; }
+            else if (today) { dueLabel = "Today"; dueCls = "today"; }
+            else if (d.toDateString() === tom.toDateString()) { dueLabel = "Tomorrow"; dueCls = "tomorrow"; }
+            else dueLabel = d.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+          }
+          return `
+            <div class="task-row ${t.completed?'done-row':''}" style="cursor:default">
+              <div class="priority-bar"></div>
+              <div class="task-row-inner">
+                <button class="check ${t.completed?'done':''} ${overdue?'overdue-check':''}"
+                  onclick="toggleSyncedTask('${t.id}')">
+                  ${t.completed ? "✓" : ""}
+                </button>
+                <div class="task-body">
+                  <div class="task-title ${t.completed?'done':''}">${esc(t.title)}</div>
+                  <div class="task-sub">
+                    ${t.list_name ? `<span>${esc(t.list_name)}</span>` : ""}
+                    ${t.notes ? `<span>${esc(t.notes.slice(0,60))}${t.notes.length>60?"…":""}</span>` : ""}
+                  </div>
+                </div>
+                <div class="task-right">
+                  ${dueLabel ? `<span class="due-badge ${dueCls}">${esc(dueLabel)}</span>` : ""}
+                </div>
+              </div>
+            </div>`;
+        }).join("")}
+      </div>`;
+  }).join("");
+}
+
+function renderConnectionsTab() {
+  if (connections.length === 0) {
+    return `<div class="empty">
+      <h3>No connections yet</h3>
+      <p>Connect Google Tasks or Apple Reminders to sync tasks into the hub.<br><br>
+      <strong>Google Tasks:</strong> Requires a Google OAuth client ID configured in your hub's environment variables.<br>
+      <strong>Apple Reminders:</strong> Requires an app-specific password.</p>
+    </div>`;
+  }
+  return connections.map(c => `
+    <div class="conn-card">
+      <div class="conn-info">
+        <div class="name">${esc(c.label)}</div>
+        <div class="meta">
+          <span class="provider-badge">${esc(c.provider)}</span>
+          ${esc(memberName(c.family_member_id))} ·
+          ${c.last_synced_at ? "Last synced " + new Date(c.last_synced_at).toLocaleDateString() : "Never synced"}
+        </div>
+      </div>
+      <div class="conn-actions">
+        <button class="btn-sm" onclick="syncConnection('${c.id}')">Sync</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function render() {
+  if (!ME) {
+    document.getElementById("root").innerHTML = `
+      <div class="login-notice">
+        <h2>Please log in</h2>
+        <p>Sign in to use Tasks.</p>
+      </div>`;
+    return;
+  }
+
+  const tabContent = {
+    mine:        renderMineTab,
+    family:      renderFamilyTab,
+    synced:      renderSyncedTab,
+    connections: renderConnectionsTab,
+  };
+
+  document.getElementById("root").innerHTML = `
+    <div class="tabs">
+      <button class="tab ${activeTab==='mine'?'active':''}"        onclick="setTab('mine')">My Tasks</button>
+      <button class="tab ${activeTab==='family'?'active':''}"      onclick="setTab('family')">Family</button>
+      <button class="tab ${activeTab==='synced'?'active':''}"      onclick="setTab('synced')">Synced</button>
+      <button class="tab ${activeTab==='connections'?'active':''}" onclick="setTab('connections')">Connections</button>
+    </div>
+    ${(tabContent[activeTab] || tabContent.mine)()}
+  `;
+}
+
+// ── Task Modal ─────────────────────────────────────────────────────────────────
+function buildModalForm(task, isNew) {
+  const labels = parseLabels(task.labels);
+  const recur  = task.recurrence ? (typeof task.recurrence === "string" ? JSON.parse(task.recurrence) : task.recurrence) : null;
+  const recurFreq = recur?.freq || "none";
+  const recurInterval = recur?.interval || 1;
+  const recurDays = recur?.days || [];
+  const recurEndType = recur?.end_type || "never";
+  const recurCount  = recur?.count || "";
+  const recurEndDate = recur?.end_date || "";
+  const visibleLists = localLists.filter(l => !l.member_id || l.member_id === ME?.id);
+
+  // Subtasks
+  const subs = localSubtasks.filter(s => s.parent_id === task.id);
+
+  return `
+    <div class="field">
+      <label>Title</label>
+      <input type="text" id="f-title" value="${esc(task.title)}" placeholder="Task title" />
+    </div>
+    <div class="field">
+      <label>Notes</label>
+      <textarea id="f-notes" placeholder="Add notes…">${esc(task.notes||"")}</textarea>
+    </div>
+    <div class="field">
+      <label>Priority</label>
+      <div class="priority-opts">
+        ${[0,1,2,3].map(p => `
+          <button class="priority-opt ${task.priority==p ? PRIORITY_CLASSES[p] : ''}"
+            onclick="setModalPriority(${p})" data-p="${p}">${PRIORITY_LABELS[p]}</button>
+        `).join("")}
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Due date</label>
+        <input type="date" id="f-due-date" value="${task.due_date||""}" />
+      </div>
+      <div class="field">
+        <label>Due time</label>
+        <input type="time" id="f-due-time" value="${task.due_time||""}" />
+      </div>
+    </div>
+    <div class="field">
+      <label>Assignee</label>
+      <select id="f-assignee">
+        <option value="">— Unassigned —</option>
+        ${members.map(m => `<option value="${m.id}" ${task.assignee_id===m.id?'selected':''}>${esc(m.name)}</option>`).join("")}
+      </select>
+    </div>
+    <div class="field">
+      <label>List</label>
+      <select id="f-list">
+        <option value="">— No list —</option>
+        ${visibleLists.map(l => `<option value="${l.id}" ${task.list_id===l.id?'selected':''}>${esc(l.name)}</option>`).join("")}
+      </select>
+    </div>
+    <div class="field">
+      <label>Labels</label>
+      <div class="label-input-wrap">
+        <input type="text" id="f-label-input" placeholder="Add label, press Enter" style="flex:1" onkeydown="addLabel(event)" />
+      </div>
+      <div class="labels-list" id="labels-list">
+        ${labels.map((l,i) => `<span class="label-tag">${esc(l)}<button onclick="removeLabel(${i})">×</button></span>`).join("")}
+      </div>
+    </div>
+    <div class="field">
+      <label>Repeats</label>
+      <select id="f-recur-freq" onchange="updateRecurUI()">
+        <option value="none"     ${recurFreq==="none"||!recur?'selected':''}>None</option>
+        <option value="daily"    ${recurFreq==="daily"?'selected':''}>Daily</option>
+        <option value="weekdays" ${recurFreq==="weekly"&&recurDays.length===5?'selected':''}>Weekdays</option>
+        <option value="weekly"   ${recurFreq==="weekly"&&recurDays.length!==5?'selected':''}>Weekly</option>
+        <option value="biweekly" ${recurFreq==="weekly"&&recurInterval===2?'selected':''}>Biweekly</option>
+        <option value="monthly"  ${recurFreq==="monthly"?'selected':''}>Monthly</option>
+        <option value="yearly"   ${recurFreq==="yearly"?'selected':''}>Yearly</option>
+      </select>
+      <div id="recur-detail" style="margin-top:8px;display:${recur && recurFreq!=='none'?'block':'none'}">
+        <div class="recur-section">
+          <div id="day-toggle-wrap" style="display:${recurFreq==='weekly'?'block':'none'}">
+            <div style="font-size:.78rem;color:var(--muted);font-weight:600;margin-bottom:4px">Days</div>
+            <div class="day-toggles">
+              ${DAYS.map((d,i) => `<button class="day-btn ${recurDays.includes(d)?'on':''}" onclick="toggleDay('${d}')" data-day="${d}">${DAY_LABELS[i]}</button>`).join("")}
+            </div>
+          </div>
+          <div style="margin-top:${recurFreq==='weekly'?'10px':'0'}">
+            <label style="font-size:.78rem;color:var(--muted);font-weight:600">Ends</label>
+            <select id="f-recur-end" onchange="updateRecurEndUI()" style="margin-top:4px;width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem">
+              <option value="never" ${recurEndType==='never'?'selected':''}>Never</option>
+              <option value="count" ${recurEndType==='count'?'selected':''}>After N times</option>
+              <option value="date"  ${recurEndType==='date'?'selected':''}>On date</option>
+            </select>
+          </div>
+          <div id="recur-count-wrap" style="margin-top:8px;display:${recurEndType==='count'?'block':'none'}">
+            <input type="number" id="f-recur-count" value="${recurCount}" min="1" placeholder="Times" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem" />
+          </div>
+          <div id="recur-date-wrap" style="margin-top:8px;display:${recurEndType==='date'?'block':'none'}">
+            <input type="date" id="f-recur-end-date" value="${recurEndDate}" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem" />
+          </div>
+        </div>
+      </div>
+    </div>
+    ${!isNew ? `
+    <div class="field">
+      <label>Subtasks</label>
+      <ul class="subtask-list" id="subtask-list">
+        ${subs.map(s => `
+          <li class="subtask-item" data-sub="${s.id}">
+            <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask('${s.id}')">${s.completed?'✓':''}</button>
+            <span class="subtask-title ${s.completed?'done':''}">${esc(s.title)}</span>
+            <button class="btn-sm" style="padding:3px 8px;font-size:.7rem" onclick="deleteSubtask('${s.id}')">×</button>
+          </li>
+        `).join("")}
+      </ul>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="sub-input" placeholder="Add subtask…" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem" onkeydown="addSubtask(event,'${task.id}')" />
+        <button class="btn-ghost" onclick="addSubtask(null,'${task.id}')">Add</button>
+      </div>
+    </div>` : ""}
+  `;
+}
+
+function buildModalFooter(task, isNew) {
+  if (isNew) {
+    return `
+      <div></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="saveTask()">Create</button>
+      </div>`;
+  }
+  return `
+    <div style="display:flex;gap:6px">
+      <button class="btn-danger" onclick="confirmDeleteTask('${task.id}')">Delete</button>
+      <button class="btn-ghost" onclick="duplicateTask('${task.id}')">Duplicate</button>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveTask()">Save</button>
+    </div>`;
+}
+
+function openTaskModal(task, isNew) {
+  modalTask  = task;
+  modalIsNew = isNew;
+  document.getElementById("modal-title").textContent = isNew ? "New Task" : "Edit Task";
+  document.getElementById("modal-body").innerHTML   = buildModalForm(task, isNew);
+  document.getElementById("modal-footer").innerHTML = buildModalFooter(task, isNew);
+  document.getElementById("task-modal").style.display = "flex";
+  setTimeout(() => { const el = document.getElementById("f-title"); if (el) el.focus(); }, 50);
+}
+
+window.openNewTask = function() {
+  const defaultList = activeListId || (localLists.find(l => !l.member_id || l.member_id === ME?.id)?.id || null);
+  openTaskModal({
+    id: null, list_id: defaultList, title: "", notes: "", assignee_id: ME?.id || null,
+    due_date: null, due_time: null, priority: 0, labels: "[]", recurrence: null,
+    completed: 0, parent_id: null,
+  }, true);
+};
+
+window.openTask = function(id) {
+  const task = localTasks.find(t => t.id === id);
+  if (!task) return;
+  openTaskModal(task, false);
+};
+
+window.closeModal = function() {
+  document.getElementById("task-modal").style.display = "none";
+  modalTask = null;
+};
+
+window.modalOverlayClick = function(e) {
+  if (e.target === document.getElementById("task-modal")) closeModal();
+};
+
+window.setModalPriority = function(p) {
+  if (modalTask) modalTask.priority = p;
+  document.querySelectorAll(".priority-opt").forEach(btn => {
+    const bp = parseInt(btn.dataset.p);
+    btn.className = "priority-opt " + (bp === p ? PRIORITY_CLASSES[p] : "");
+  });
+};
+
+window.updateRecurUI = function() {
+  const freq = document.getElementById("f-recur-freq")?.value;
+  const detail = document.getElementById("recur-detail");
+  const dayWrap = document.getElementById("day-toggle-wrap");
+  if (!detail) return;
+  detail.style.display = (freq && freq !== "none") ? "block" : "none";
+  if (dayWrap) dayWrap.style.display = freq === "weekly" ? "block" : "none";
+};
+
+window.updateRecurEndUI = function() {
+  const val = document.getElementById("f-recur-end")?.value;
+  const cw = document.getElementById("recur-count-wrap");
+  const dw = document.getElementById("recur-date-wrap");
+  if (cw) cw.style.display = val === "count" ? "block" : "none";
+  if (dw) dw.style.display = val === "date"  ? "block" : "none";
+};
+
+window.toggleDay = function(day) {
+  const btn = document.querySelector(`.day-btn[data-day="${day}"]`);
+  if (!btn) return;
+  btn.classList.toggle("on");
+};
+
+// Labels management in modal
+let _modalLabels = [];
+function syncModalLabels() {
+  if (!modalTask) return;
+  _modalLabels = parseLabels(modalTask.labels);
+}
+window.addLabel = function(e) {
+  if (e && e.key !== "Enter") return;
+  const inp = document.getElementById("f-label-input");
+  if (!inp) return;
+  const val = inp.value.trim();
+  if (!val) return;
+  syncModalLabels();
+  if (!_modalLabels.includes(val)) _modalLabels.push(val);
+  inp.value = "";
+  refreshLabelsList();
+};
+window.removeLabel = function(i) {
+  syncModalLabels();
+  _modalLabels.splice(i, 1);
+  refreshLabelsList();
+};
+function refreshLabelsList() {
+  const el = document.getElementById("labels-list");
+  if (!el) return;
+  el.innerHTML = _modalLabels.map((l,i) =>
+    `<span class="label-tag">${esc(l)}<button onclick="removeLabel(${i})">×</button></span>`
+  ).join("");
+}
+
+function buildRecurrenceFromForm() {
+  const freq = document.getElementById("f-recur-freq")?.value;
+  if (!freq || freq === "none") return null;
+  const rule = {};
+  if (freq === "daily")    { rule.freq = "daily"; rule.interval = 1; }
+  else if (freq === "weekdays") { rule.freq = "weekly"; rule.interval = 1; rule.days = ["mon","tue","wed","thu","fri"]; }
+  else if (freq === "weekly")   { rule.freq = "weekly"; rule.interval = 1; rule.days = [...document.querySelectorAll(".day-btn.on")].map(b => b.dataset.day); }
+  else if (freq === "biweekly") { rule.freq = "weekly"; rule.interval = 2; }
+  else if (freq === "monthly")  { rule.freq = "monthly"; rule.interval = 1; }
+  else if (freq === "yearly")   { rule.freq = "yearly"; rule.interval = 1; }
+  const endType = document.getElementById("f-recur-end")?.value || "never";
+  rule.end_type = endType;
+  if (endType === "count") rule.count = parseInt(document.getElementById("f-recur-count")?.value) || null;
+  if (endType === "date")  rule.end_date = document.getElementById("f-recur-end-date")?.value || null;
+  return rule;
+}
+
+window.saveTask = async function() {
+  const title = document.getElementById("f-title")?.value.trim();
+  if (!title) { showToast("Title is required"); return; }
+  syncModalLabels();
+  const fields = {
+    title,
+    notes:       document.getElementById("f-notes")?.value || "",
+    priority:    modalTask?.priority ?? 0,
+    due_date:    document.getElementById("f-due-date")?.value || null,
+    due_time:    document.getElementById("f-due-time")?.value || null,
+    assignee_id: document.getElementById("f-assignee")?.value || null,
+    list_id:     document.getElementById("f-list")?.value || null,
+    labels:      _modalLabels,
+    recurrence:  buildRecurrenceFromForm(),
+  };
+
+  if (modalIsNew) {
+    await createTask(fields);
+    showToast("Task created");
+  } else {
+    const updateFields = { ...fields, labels: JSON.stringify(fields.labels), recurrence: fields.recurrence ? JSON.stringify(fields.recurrence) : null };
+    await updateTask(modalTask.id, updateFields);
+    showToast("Task saved");
+  }
+  closeModal();
+  await reloadLocal();
+  render();
+};
+
+window.confirmDeleteTask = function(id) {
+  if (!confirm("Delete this task and its subtasks?")) return;
+  deleteTask(id).then(async () => {
+    closeModal();
+    await reloadLocal();
+    render();
+    showToast("Task deleted");
+  });
+};
+
+window.duplicateTask = async function(id) {
+  const task = localTasks.find(t => t.id === id);
+  if (!task) return;
+  await createTask({
+    list_id: task.list_id,
+    title: task.title + " (copy)",
+    notes: task.notes,
+    assignee_id: task.assignee_id,
+    due_date: task.due_date,
+    due_time: task.due_time,
+    priority: task.priority,
+    labels: parseLabels(task.labels),
+    recurrence: task.recurrence ? JSON.parse(task.recurrence) : null,
+  });
+  closeModal();
+  await reloadLocal();
+  render();
+  showToast("Task duplicated");
+};
+
+// Subtasks
+window.toggleSubtask = async function(id) {
+  const sub = localSubtasks.find(s => s.id === id);
+  if (!sub) return;
+  const newVal = sub.completed ? 0 : 1;
+  await updateTask(id, { completed: newVal, completed_at: newVal ? now() : null });
+  await reloadLocal();
+  // Refresh subtask list in modal
+  const list = document.getElementById("subtask-list");
+  if (list && modalTask) {
+    const subs = localSubtasks.filter(s => s.parent_id === modalTask.id);
+    list.innerHTML = subs.map(s => `
+      <li class="subtask-item" data-sub="${s.id}">
+        <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask('${s.id}')">${s.completed?'✓':''}</button>
+        <span class="subtask-title ${s.completed?'done':''}">${esc(s.title)}</span>
+        <button class="btn-sm" style="padding:3px 8px;font-size:.7rem" onclick="deleteSubtask('${s.id}')">×</button>
+      </li>
+    `).join("");
+  }
+};
+
+window.addSubtask = async function(e, parentId) {
+  if (e && e.key !== "Enter") return;
+  const inp = document.getElementById("sub-input");
+  if (!inp) return;
+  const val = inp.value.trim();
+  if (!val) return;
+  const id = uid();
+  const ts = now();
+  await dbRun(
+    `INSERT INTO tasks (id,list_id,title,notes,assignee_id,due_date,due_time,priority,labels,recurrence,completed,parent_id,created_by,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,0,'[]',NULL,0,?,?,?,?)`,
+    [id, null, val, "", null, null, null, parentId, ME?.id||null, ts, ts]
+  );
+  inp.value = "";
+  await reloadLocal();
+  const list = document.getElementById("subtask-list");
+  if (list) {
+    const subs = localSubtasks.filter(s => s.parent_id === parentId);
+    list.innerHTML = subs.map(s => `
+      <li class="subtask-item" data-sub="${s.id}">
+        <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask('${s.id}')">${s.completed?'✓':''}</button>
+        <span class="subtask-title ${s.completed?'done':''}">${esc(s.title)}</span>
+        <button class="btn-sm" style="padding:3px 8px;font-size:.7rem" onclick="deleteSubtask('${s.id}')">×</button>
+      </li>
+    `).join("");
+  }
+};
+
+window.deleteSubtask = async function(id) {
+  await dbRun("DELETE FROM tasks WHERE id=?", [id]);
+  await reloadLocal();
+  const parentId = modalTask?.id;
+  const list = document.getElementById("subtask-list");
+  if (list && parentId) {
+    const subs = localSubtasks.filter(s => s.parent_id === parentId);
+    list.innerHTML = subs.map(s => `
+      <li class="subtask-item" data-sub="${s.id}">
+        <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask('${s.id}')">${s.completed?'✓':''}</button>
+        <span class="subtask-title ${s.completed?'done':''}">${esc(s.title)}</span>
+        <button class="btn-sm" style="padding:3px 8px;font-size:.7rem" onclick="deleteSubtask('${s.id}')">×</button>
+      </li>
+    `).join("");
+  }
+};
+
+// Quick add
+window.quickAdd = async function(e) {
+  if (e.key !== "Enter") return;
+  const inp = document.getElementById("quick-input");
+  if (!inp) return;
+  const val = inp.value.trim();
+  if (!val) return;
+  inp.value = "";
+  const defaultList = activeListId || null;
+  await createTask({
+    title: val,
+    list_id: defaultList,
+    assignee_id: ME?.id || null,
+    priority: 0,
+    labels: [],
+  });
+  await reloadLocal();
+  render();
+};
+
+// ── List Modal ────────────────────────────────────────────────────────────────
+function openListModal(list, isNew) {
+  listModalData = list ? { ...list } : { id: null, name: "", color: LIST_COLORS[0], member_id: ME?.id || null };
+  const ln = listModalData;
+  document.getElementById("list-modal-title").textContent = isNew ? "New List" : "Edit List";
+  document.getElementById("list-modal-body").innerHTML = `
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="lf-name" value="${esc(ln.name)}" placeholder="List name" />
+    </div>
+    <div class="field">
+      <label>Color</label>
+      <div class="color-opts">
+        ${LIST_COLORS.map(c => `
+          <div class="color-dot ${ln.color===c?'sel':''}" style="background:${c}" onclick="setListColor('${c}')" data-color="${c}"></div>
+        `).join("")}
+      </div>
+    </div>
+    ${isAdult(ME, members) ? `
+    <div class="field">
+      <label>Visibility</label>
+      <select id="lf-member">
+        <option value="">Shared (all family)</option>
+        ${members.map(m => `<option value="${m.id}" ${ln.member_id===m.id?'selected':''}>${esc(m.name)} only</option>`).join("")}
+      </select>
+    </div>` : ""}
+  `;
+  document.getElementById("list-modal-footer").innerHTML = `
+    <div>
+      ${!isNew ? `<button class="btn-danger" onclick="confirmDeleteList('${ln.id}')">Delete</button>` : ""}
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-ghost" onclick="closeListModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveList(${isNew})">Save</button>
+    </div>`;
+  document.getElementById("list-modal").style.display = "flex";
+  setTimeout(() => { const el = document.getElementById("lf-name"); if (el) { el.focus(); el.select(); } }, 50);
+}
+
+window.openNewList = function() { openListModal(null, true); };
+
+window.closeListModal = function() {
+  document.getElementById("list-modal").style.display = "none";
+  listModalData = null;
+};
+
+window.listModalOverlayClick = function(e) {
+  if (e.target === document.getElementById("list-modal")) closeListModal();
+};
+
+window.setListColor = function(c) {
+  if (listModalData) listModalData.color = c;
+  document.querySelectorAll(".color-dot").forEach(d => {
+    d.classList.toggle("sel", d.dataset.color === c);
+  });
+};
+
+window.saveList = async function(isNew) {
+  const name = document.getElementById("lf-name")?.value.trim();
+  if (!name) { showToast("Name is required"); return; }
+  const color = listModalData?.color || LIST_COLORS[0];
+  const memberId = isAdult(ME, members)
+    ? (document.getElementById("lf-member")?.value || null)
+    : (ME?.id || null);
+
+  if (isNew) {
+    await createList(name, color, memberId);
+  } else {
+    await updateList(listModalData.id, { name, color, member_id: memberId });
+  }
+  closeListModal();
+  await reloadLocal();
+  render();
+};
+
+window.confirmDeleteList = function(id) {
+  if (!confirm("Delete this list? Tasks will be unassigned.")) return;
+  deleteList(id).then(async () => {
+    if (activeListId === id) activeListId = null;
+    closeListModal();
+    await reloadLocal();
+    render();
+    showToast("List deleted");
+  });
+};
+
+// ── Global nav ────────────────────────────────────────────────────────────────
+window.setTab        = (t) => { activeTab = t; render(); };
+window.setMineFilter = (f) => { mineFilter = f; render(); };
+window.setActiveList = (id) => { activeListId = id; render(); };
+window.completeTask  = completeTask;
+window.toggleSyncedTask = toggleSyncedTask;
+window.syncAll       = syncAll;
+window.syncConnection = syncConnection;
+
+load();
+</script>
+</body>
+</html>
