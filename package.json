@@ -4,7 +4,12 @@
   "description": "Tasks app for Chickadee Bandit — synced from Google Tasks or Apple Reminders",
   "type": "module",
   "scripts": {
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "vitest": "^3.2.4"
+  }
 }
