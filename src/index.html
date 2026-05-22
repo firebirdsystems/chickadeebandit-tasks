@@ -219,7 +219,7 @@
 </div>
 
 <script type="module">
-import { memberColor, initial, esc, isAdult } from "/hub-sdk.js";
+import { memberColor, initial, esc, isAdult, hubConfirm } from "/hub-sdk.js";
 
 const CONTEXT = window.__CONTEXT_URL ?? "";
 const DB      = window.__DB_URL ?? "";
@@ -1045,7 +1045,7 @@ window.saveTask = async function() {
 };
 
 window.confirmDeleteTask = function(id) {
-  if (!confirm("Delete this task and its subtasks?")) return;
+  if (!await hubConfirm({ message: "Delete this task?", description: "Subtasks will also be removed.", confirmLabel: "Delete", destructive: true })) return;
   deleteTask(id).then(async () => {
     closeModal();
     await reloadLocal();
@@ -1236,7 +1236,7 @@ window.saveList = async function(isNew) {
 };
 
 window.confirmDeleteList = function(id) {
-  if (!confirm("Delete this list? Tasks will be unassigned.")) return;
+  if (!await hubConfirm({ message: "Delete this list?", description: "Tasks in it will become unassigned.", confirmLabel: "Delete list", destructive: true })) return;
   deleteList(id).then(async () => {
     if (activeListId === id) activeListId = null;
     closeListModal();
