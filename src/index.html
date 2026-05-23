@@ -1049,7 +1049,7 @@ window.saveTask = async function() {
   render();
 };
 
-window.confirmDeleteTask = function(id) {
+window.confirmDeleteTask = async function(id) {
   if (!await hubConfirm({ message: "Delete this task?", description: "Subtasks will also be removed.", confirmLabel: "Delete", destructive: true })) return;
   deleteTask(id).then(async () => {
     closeModal();
@@ -1240,7 +1240,7 @@ window.saveList = async function(isNew) {
   render();
 };
 
-window.confirmDeleteList = function(id) {
+window.confirmDeleteList = async function(id) {
   if (!await hubConfirm({ message: "Delete this list?", description: "Tasks in it will become unassigned.", confirmLabel: "Delete list", destructive: true })) return;
   deleteList(id).then(async () => {
     if (activeListId === id) activeListId = null;
