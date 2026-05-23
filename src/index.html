@@ -249,11 +249,15 @@ let undoData = null;        // {task, action}
 async function dbRun(sql, params = []) {
   if (!DB) return { rows: [] };
   try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 15000);
     const res = await fetch(DB, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sql, params }),
+      signal: ctrl.signal,
     });
+    clearTimeout(t);
     return await res.json();
   } catch { return { rows: [] }; }
 }
@@ -1256,7 +1260,11 @@ window.toggleSyncedTask = toggleSyncedTask;
 window.syncAll       = syncAll;
 window.syncConnection = syncConnection;
 
-load();
+load().catch(err => {
+  console.error("Tasks failed to load:", err);
+  const root = document.getElementById("root");
+  if (root) root.innerHTML = `<div class="empty"><h3>Failed to load</h3><p>${err?.message ?? "Unknown error"}</p></div>`;
+});
 </script>
 </body>
 </html>
