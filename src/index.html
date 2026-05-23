@@ -220,18 +220,20 @@
 
 <script type="module">
 import { memberColor, initial, esc, isAdult, hubConfirm } from "/hub-sdk.js";
+import {
+  PRIORITY_COLORS, PRIORITY_LABELS, PRIORITY_CLASSES,
+  DAYS, DAY_LABELS,
+  todayStr, parseLabels,
+  isOverdue, isToday, isTomorrow, isUpcoming, formatDue,
+  nextDueDate, sortTasks,
+} from "./logic.js";
 
 const CONTEXT = window.__CONTEXT_URL ?? "";
 const DB      = window.__DB_URL ?? "";
 const ME      = window.__CURRENT_MEMBER ?? null;
 const APP_ID  = window.__APP_ID ?? "tasks";
 
-const PRIORITY_COLORS = { 0: "transparent", 1: "#2563eb", 2: "#d97706", 3: "#dc2626" };
-const PRIORITY_LABELS = { 0: "None", 1: "Low", 2: "Med", 3: "High" };
-const PRIORITY_CLASSES = { 0: "sel-none", 1: "sel-low", 2: "sel-med", 3: "sel-high" };
 const LIST_COLORS = ["#4f46e5","#0891b2","#16a34a","#d97706","#dc2626","#7c3aed"];
-const DAYS = ["sun","mon","tue","wed","thu","fri","sat"];
-const DAY_LABELS = ["S","M","T","W","T","F","S"];
 
 // State
 let members = [], syncedTasks = [], connections = [];
@@ -269,61 +271,10 @@ async function initDB() {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function now() { return new Date().toISOString(); }
-function todayStr() { return new Date().toISOString().split("T")[0]; }
 
 function memberById(id) { return members.find(m => m.id === id); }
 function memberName(id) { return memberById(id)?.name ?? "Unknown"; }
 function mcolor(id) { return memberColor(id, members); }
-
-function isOverdue(t) {
-  if (t.completed || !t.due_date) return false;
-  return t.due_date < todayStr();
-}
-function isToday(t) { return t.due_date === todayStr(); }
-function isTomorrow(t) {
-  const d = new Date(); d.setDate(d.getDate() + 1);
-  return t.due_date === d.toISOString().split("T")[0];
-}
-function isUpcoming(t) {
-  if (!t.due_date || t.completed) return false;
-  return t.due_date > todayStr();
-}
-
-function formatDue(t) {
-  if (!t.due_date) return null;
-  if (isOverdue(t)) return { label: "Overdue", cls: "overdue" };
-  if (isToday(t)) return { label: "Today", cls: "today" };
-  if (isTomorrow(t)) return { label: "Tomorrow", cls: "tomorrow" };
-  const d = new Date(t.due_date + "T00:00:00");
-  return { label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }), cls: "" };
-}
-
-function parseLabels(s) {
-  try { return JSON.parse(s || "[]"); } catch { return []; }
-}
-
-function nextDueDate(dueDate, rule) {
-  if (!dueDate || !rule) return null;
-  const d = new Date(dueDate + "T00:00:00");
-  const { freq, interval = 1 } = rule;
-  if (freq === "daily") {
-    d.setDate(d.getDate() + interval);
-  } else if (freq === "weekly") {
-    if (rule.days?.length > 1) {
-      const order = DAYS;
-      const sel = rule.days.map(x => order.indexOf(x)).sort((a,b) => a-b);
-      const cur = d.getDay();
-      const next = sel.find(x => x > cur);
-      if (next != null) d.setDate(d.getDate() + (next - cur));
-      else d.setDate(d.getDate() + (7 * interval - cur + sel[0]));
-    } else { d.setDate(d.getDate() + 7 * interval); }
-  } else if (freq === "monthly") {
-    d.setMonth(d.getMonth() + interval);
-  } else if (freq === "yearly") {
-    d.setFullYear(d.getFullYear() + interval);
-  }
-  return d.toISOString().split("T")[0];
-}
 
 // ── Load data ─────────────────────────────────────────────────────────────────
 async function load() {
@@ -532,12 +483,7 @@ function filterLocalTasks() {
     tasks = tasks.filter(t => !t.completed);
   }
 
-  return tasks.sort((a, b) => {
-    const aDate = a.due_date || "9999";
-    const bDate = b.due_date || "9999";
-    if (aDate !== bDate) return aDate.localeCompare(bDate);
-    return (b.priority || 0) - (a.priority || 0);
-  });
+  return sortTasks(tasks);
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -1023,6 +969,8 @@ function buildRecurrenceFromForm() {
 window.saveTask = async function() {
   const title = document.getElementById("f-title")?.value.trim();
   if (!title) { showToast("Title is required"); return; }
+  const btn = document.getElementById("modal-footer")?.querySelector(".btn-primary");
+  if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
   syncModalLabels();
   const fields = {
     title,
@@ -1225,6 +1173,8 @@ window.setListColor = function(c) {
 window.saveList = async function(isNew) {
   const name = document.getElementById("lf-name")?.value.trim();
   if (!name) { showToast("Name is required"); return; }
+  const btn = document.getElementById("list-modal-footer")?.querySelector(".btn-primary");
+  if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
   const color = listModalData?.color || LIST_COLORS[0];
   const memberId = isAdult(ME, members)
     ? (document.getElementById("lf-member")?.value || null)
