@@ -470,7 +470,7 @@ function filterLocalTasks() {
     // My tasks: I'm assignee or creator
     if (meId) tasks = tasks.filter(t => t.assignee_id === meId || (!t.assignee_id && t.created_by === meId) || (!t.assignee_id && !t.created_by));
     if (activeListId) tasks = tasks.filter(t => t.list_id === activeListId);
-    if (mineFilter === "today")    tasks = tasks.filter(t => !t.completed && isToday(t));
+    if (mineFilter === "today")    tasks = tasks.filter(t => !t.completed && (isToday(t) || isOverdue(t)));
     else if (mineFilter === "upcoming") tasks = tasks.filter(t => !t.completed && isUpcoming(t));
     else if (mineFilter === "overdue")  tasks = tasks.filter(t => !t.completed && isOverdue(t));
     else if (mineFilter === "done")     tasks = tasks.filter(t => !!t.completed);
