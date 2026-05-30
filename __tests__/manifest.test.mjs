@@ -95,3 +95,52 @@ describe("manifest.json ai_access", () => {
     }
   });
 });
+
+// ── ai_access.db_mutations ────────────────────────────────────────────────────
+
+describe("manifest.json ai_access.db_mutations", () => {
+  const ai = manifest.ai_access;
+
+  it("mode is read_write when db_mutations are declared", () => {
+    if (!ai?.db_mutations?.length) return; // skip if no mutations declared
+    expect(ai.mode).toBe("read_write");
+  });
+
+  it("db_mutations is an array of non-empty strings", () => {
+    expect(Array.isArray(ai.db_mutations)).toBe(true);
+    expect(ai.db_mutations.length).toBeGreaterThan(0);
+    for (const name of ai.db_mutations) {
+      expect(typeof name).toBe("string");
+      expect(name.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("each db_mutation name has a corresponding src/mutations/{name}.sql file", () => {
+    for (const name of ai.db_mutations) {
+      const path = join(__dirname, `../src/mutations/${name}.sql`);
+      expect(existsSync(path), `missing mutation file: src/mutations/${name}.sql`).toBe(true);
+    }
+  });
+
+  it("each mutation file starts with UPDATE (no INSERT, DELETE, or SELECT)", () => {
+    for (const name of ai.db_mutations) {
+      const path = join(__dirname, `../src/mutations/${name}.sql`);
+      const sql = readFileSync(path, "utf-8").trim();
+      expect(
+        /^UPDATE\b/i.test(sql),
+        `src/mutations/${name}.sql must start with UPDATE, got: ${sql.slice(0, 40)}`
+      ).toBe(true);
+    }
+  });
+
+  it("each mutation file filters by household_id", () => {
+    for (const name of ai.db_mutations) {
+      const path = join(__dirname, `../src/mutations/${name}.sql`);
+      const sql = readFileSync(path, "utf-8");
+      expect(
+        sql.includes("household_id"),
+        `src/mutations/${name}.sql must filter by household_id to prevent cross-household data writes`
+      ).toBe(true);
+    }
+  });
+});

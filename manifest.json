@@ -35,7 +35,8 @@
   "icon": "✅",
   "ai_access": {
     "allowed": true,
-    "mode": "read",
-    "db_exports": ["open_tasks", "overdue_tasks", "task_summary"]
+    "mode": "read_write",
+    "db_exports": ["open_tasks", "overdue_tasks", "task_summary"],
+    "db_mutations": ["complete_task", "reopen_task", "update_due_date", "reassign_task"]
   }
 }
