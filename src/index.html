@@ -1210,7 +1210,13 @@ window.toggleSyncedTask = toggleSyncedTask;
 window.syncAll       = syncAll;
 window.syncConnection = syncConnection;
 
-load().catch(err => {
+function handleDeepLink() {
+  const taskId = new URLSearchParams(window.location.search).get("taskId");
+  if (!taskId) return;
+  openTask(taskId);
+}
+
+load().then(handleDeepLink).catch(err => {
   console.error("Tasks failed to load:", err);
   const root = document.getElementById("root");
   if (root) root.innerHTML = `<div class="empty"><h3>Failed to load</h3><p>${err?.message ?? "Unknown error"}</p></div>`;
