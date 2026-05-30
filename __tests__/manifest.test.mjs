@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { describe, it, expect } from "vitest";
@@ -37,5 +37,61 @@ describe("manifest.json", () => {
   it("data_access has reads and writes arrays", () => {
     expect(Array.isArray(manifest.data_access.reads)).toBe(true);
     expect(Array.isArray(manifest.data_access.writes)).toBe(true);
+  });
+});
+
+// ── ai_access ─────────────────────────────────────────────────────────────────
+
+describe("manifest.json ai_access", () => {
+  const ai = manifest.ai_access;
+
+  it("ai_access field is present", () => {
+    expect(ai, "ai_access is required for this app").toBeDefined();
+  });
+
+  it("allowed is true", () => {
+    expect(ai.allowed).toBe(true);
+  });
+
+  it("mode is read or read_write", () => {
+    expect(["read", "read_write"]).toContain(ai.mode);
+  });
+
+  it("db_exports is an array of non-empty strings", () => {
+    expect(Array.isArray(ai.db_exports)).toBe(true);
+    expect(ai.db_exports.length).toBeGreaterThan(0);
+    for (const name of ai.db_exports) {
+      expect(typeof name).toBe("string");
+      expect(name.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("each db_export name has a corresponding src/queries/{name}.sql file", () => {
+    for (const name of ai.db_exports) {
+      const path = join(__dirname, `../src/queries/${name}.sql`);
+      expect(existsSync(path), `missing query file: src/queries/${name}.sql`).toBe(true);
+    }
+  });
+
+  it("each query file starts with SELECT or WITH (no write statements)", () => {
+    for (const name of ai.db_exports) {
+      const path = join(__dirname, `../src/queries/${name}.sql`);
+      const sql = readFileSync(path, "utf-8").trim();
+      expect(
+        /^(SELECT|WITH)\b/i.test(sql),
+        `src/queries/${name}.sql must start with SELECT or WITH, got: ${sql.slice(0, 40)}`
+      ).toBe(true);
+    }
+  });
+
+  it("each query file filters by household_id", () => {
+    for (const name of ai.db_exports) {
+      const path = join(__dirname, `../src/queries/${name}.sql`);
+      const sql = readFileSync(path, "utf-8");
+      expect(
+        sql.includes("household_id"),
+        `src/queries/${name}.sql must filter by household_id to prevent cross-household data leaks`
+      ).toBe(true);
+    }
   });
 });
