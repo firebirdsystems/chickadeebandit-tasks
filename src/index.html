@@ -340,45 +340,59 @@ async function completeTask(id) {
   const task = localTasks.find(t => t.id === id);
   if (!task) return;
   const wasCompleted = !!task.completed;
+  const origCompletedAt = task.completed_at;
   const newCompleted = wasCompleted ? 0 : 1;
   const completedAt  = newCompleted ? now() : null;
 
-  await updateTask(id, { completed: newCompleted, completed_at: completedAt });
-
-  // Handle recurrence: when marking complete, clone with next due date
-  if (newCompleted && task.recurrence && task.due_date) {
-    try {
-      const rule = JSON.parse(task.recurrence);
-      const nextDate = nextDueDate(task.due_date, rule);
-      if (nextDate) {
-        await createTask({
-          list_id: task.list_id,
-          title: task.title,
-          notes: task.notes,
-          assignee_id: task.assignee_id,
-          due_date: nextDate,
-          due_time: task.due_time,
-          priority: task.priority,
-          labels: parseLabels(task.labels),
-          recurrence: rule,
-          parent_id: null,
-        });
-      }
-    } catch {}
-  }
-
-  await reloadLocal();
+  // Optimistic update: reflect change immediately before any DB work
+  task.completed = newCompleted;
+  task.completed_at = completedAt;
   render();
 
-  // Undo toast
   showToast(
     newCompleted ? "Task completed" : "Marked incomplete",
     newCompleted ? "Undo" : null,
     async () => {
-      await updateTask(id, { completed: wasCompleted ? 1 : 0, completed_at: wasCompleted ? task.completed_at : null });
-      await reloadLocal(); render();
+      task.completed = wasCompleted ? 1 : 0;
+      task.completed_at = origCompletedAt;
+      render();
+      await updateTask(id, { completed: wasCompleted ? 1 : 0, completed_at: origCompletedAt });
     }
   );
+
+  try {
+    await updateTask(id, { completed: newCompleted, completed_at: completedAt });
+
+    // Handle recurrence: when marking complete, clone with next due date
+    if (newCompleted && task.recurrence && task.due_date) {
+      try {
+        const rule = JSON.parse(task.recurrence);
+        const nextDate = nextDueDate(task.due_date, rule);
+        if (nextDate) {
+          await createTask({
+            list_id: task.list_id,
+            title: task.title,
+            notes: task.notes,
+            assignee_id: task.assignee_id,
+            due_date: nextDate,
+            due_time: task.due_time,
+            priority: task.priority,
+            labels: parseLabels(task.labels),
+            recurrence: rule,
+            parent_id: null,
+          });
+          await reloadLocal();
+          render();
+        }
+      } catch {}
+    }
+  } catch {
+    // Revert on DB failure
+    task.completed = wasCompleted ? 1 : 0;
+    task.completed_at = origCompletedAt;
+    render();
+    showToast("Failed to update task");
+  }
 }
 
 // ── List CRUD ─────────────────────────────────────────────────────────────────
@@ -985,16 +999,21 @@ window.saveTask = async function() {
   };
 
   if (modalIsNew) {
+    closeModal();
     await createTask(fields);
+    await reloadLocal();
+    render();
     showToast("Task created");
   } else {
     const updateFields = { ...fields, labels: JSON.stringify(fields.labels), recurrence: fields.recurrence ? JSON.stringify(fields.recurrence) : null };
-    await updateTask(modalTask.id, updateFields);
+    const taskId = modalTask.id;
+    // Optimistic: update the in-memory object directly (modalTask is a reference into localTasks)
+    Object.assign(modalTask, updateFields);
+    closeModal();
+    render();
+    await updateTask(taskId, updateFields);
     showToast("Task saved");
   }
-  closeModal();
-  await reloadLocal();
-  render();
 };
 
 window.confirmDeleteTask = async function(id) {
@@ -1028,23 +1047,37 @@ window.duplicateTask = async function(id) {
 };
 
 // Subtasks
+function renderSubtaskList(parentId) {
+  const list = document.getElementById("subtask-list");
+  if (!list) return;
+  const subs = localSubtasks.filter(s => s.parent_id === parentId);
+  list.innerHTML = subs.map(s => `
+    <li class="subtask-item" data-sub="${s.id}">
+      <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask('${s.id}')">${s.completed?'✓':''}</button>
+      <span class="subtask-title ${s.completed?'done':''}">${esc(s.title)}</span>
+      <button class="btn-sm" style="padding:3px 8px;font-size:.7rem" onclick="deleteSubtask('${s.id}')">×</button>
+    </li>
+  `).join("");
+}
+
 window.toggleSubtask = async function(id) {
   const sub = localSubtasks.find(s => s.id === id);
   if (!sub) return;
-  const newVal = sub.completed ? 0 : 1;
-  await updateTask(id, { completed: newVal, completed_at: newVal ? now() : null });
-  await reloadLocal();
-  // Refresh subtask list in modal
-  const list = document.getElementById("subtask-list");
-  if (list && modalTask) {
-    const subs = localSubtasks.filter(s => s.parent_id === modalTask.id);
-    list.innerHTML = subs.map(s => `
-      <li class="subtask-item" data-sub="${s.id}">
-        <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask('${s.id}')">${s.completed?'✓':''}</button>
-        <span class="subtask-title ${s.completed?'done':''}">${esc(s.title)}</span>
-        <button class="btn-sm" style="padding:3px 8px;font-size:.7rem" onclick="deleteSubtask('${s.id}')">×</button>
-      </li>
-    `).join("");
+  const wasCompleted = !!sub.completed;
+  const newVal = wasCompleted ? 0 : 1;
+
+  // Optimistic update
+  sub.completed = newVal;
+  sub.completed_at = newVal ? now() : null;
+  if (modalTask) renderSubtaskList(modalTask.id);
+
+  try {
+    await updateTask(id, { completed: newVal, completed_at: newVal ? now() : null });
+  } catch {
+    // Revert on failure
+    sub.completed = wasCompleted ? 1 : 0;
+    sub.completed_at = wasCompleted ? sub.completed_at : null;
+    if (modalTask) renderSubtaskList(modalTask.id);
   }
 };
 
@@ -1063,34 +1096,13 @@ window.addSubtask = async function(e, parentId) {
   );
   inp.value = "";
   await reloadLocal();
-  const list = document.getElementById("subtask-list");
-  if (list) {
-    const subs = localSubtasks.filter(s => s.parent_id === parentId);
-    list.innerHTML = subs.map(s => `
-      <li class="subtask-item" data-sub="${s.id}">
-        <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask('${s.id}')">${s.completed?'✓':''}</button>
-        <span class="subtask-title ${s.completed?'done':''}">${esc(s.title)}</span>
-        <button class="btn-sm" style="padding:3px 8px;font-size:.7rem" onclick="deleteSubtask('${s.id}')">×</button>
-      </li>
-    `).join("");
-  }
+  renderSubtaskList(parentId);
 };
 
 window.deleteSubtask = async function(id) {
   await dbRun("DELETE FROM tasks WHERE id=?", [id]);
   await reloadLocal();
-  const parentId = modalTask?.id;
-  const list = document.getElementById("subtask-list");
-  if (list && parentId) {
-    const subs = localSubtasks.filter(s => s.parent_id === parentId);
-    list.innerHTML = subs.map(s => `
-      <li class="subtask-item" data-sub="${s.id}">
-        <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask('${s.id}')">${s.completed?'✓':''}</button>
-        <span class="subtask-title ${s.completed?'done':''}">${esc(s.title)}</span>
-        <button class="btn-sm" style="padding:3px 8px;font-size:.7rem" onclick="deleteSubtask('${s.id}')">×</button>
-      </li>
-    `).join("");
-  }
+  if (modalTask) renderSubtaskList(modalTask.id);
 };
 
 // Quick add
