@@ -283,8 +283,8 @@ async function load() {
     fetch(`${CONTEXT}?keys=family.members`).then(r => r.json()).catch(() => ({ "family.members": [] })),
     fetch("/api/tasks").then(r => r.json()).catch(() => []),
     fetch("/api/tasks/connections").then(r => r.json()).catch(() => []),
-    dbRun("SELECT * FROM lists ORDER BY sort_order, created_at"),
-    dbRun("SELECT * FROM tasks WHERE parent_id IS NULL ORDER BY due_date, priority DESC, created_at"),
+    dbRun("SELECT * FROM app_tasks__lists ORDER BY sort_order, created_at"),
+    dbRun("SELECT * FROM app_tasks__tasks WHERE parent_id IS NULL ORDER BY due_date, priority DESC, created_at"),
   ]);
   members     = ctxRes["family.members"] ?? [];
   syncedTasks = Array.isArray(tasksRes) ? tasksRes : [];
@@ -293,7 +293,7 @@ async function load() {
   localTasks  = localRes.rows ?? [];
 
   // Load subtasks
-  const subRes = await dbRun("SELECT * FROM tasks WHERE parent_id IS NOT NULL ORDER BY created_at");
+  const subRes = await dbRun("SELECT * FROM app_tasks__tasks WHERE parent_id IS NOT NULL ORDER BY created_at");
   localSubtasks = subRes.rows ?? [];
 
   render();

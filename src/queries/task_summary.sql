@@ -5,15 +5,13 @@ SELECT
   COUNT(*) FILTER (WHERE t.completed = 1)                  AS done,
   COUNT(*) FILTER (WHERE t.completed = 0
     AND t.due_date IS NOT NULL
-    AND t.due_date::date < CURRENT_DATE)                   AS overdue,
+    AND date(t.due_date) < CURRENT_DATE)                   AS overdue,
   COUNT(*) FILTER (WHERE t.completed = 0
     AND t.due_date IS NOT NULL
-    AND t.due_date::date = CURRENT_DATE)                   AS due_today
-FROM tasks t
-LEFT JOIN lists l
+    AND date(t.due_date) = CURRENT_DATE)                   AS due_today
+FROM app_tasks__tasks t
+LEFT JOIN app_tasks__lists l
   ON l.id = t.list_id
-  AND l.household_id = t.household_id
-WHERE t.household_id = current_setting('app.household_id', true)::uuid
-  AND t.parent_id IS NULL
+WHERE t.parent_id IS NULL
 GROUP BY l.id, l.name
 ORDER BY l.name NULLS LAST

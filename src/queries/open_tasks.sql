@@ -13,12 +13,10 @@ SELECT
   t.created_by,
   t.created_at,
   t.updated_at
-FROM tasks t
-LEFT JOIN lists l
+FROM app_tasks__tasks t
+LEFT JOIN app_tasks__lists l
   ON l.id = t.list_id
-  AND l.household_id = t.household_id
-WHERE t.household_id = current_setting('app.household_id', true)::uuid
-  AND t.completed = 0
+WHERE t.completed = 0
   AND t.parent_id IS NULL
 ORDER BY
   t.due_date NULLS LAST,

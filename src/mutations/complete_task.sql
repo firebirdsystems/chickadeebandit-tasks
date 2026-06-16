@@ -1,8 +1,7 @@
-UPDATE tasks
+UPDATE app_tasks__tasks
 SET
   completed    = 1,
-  completed_at = NOW()::text,
-  updated_at   = NOW()::text
+  completed_at = datetime('now'),
+  updated_at   = datetime('now')
 WHERE id           = $1
-  AND household_id = current_setting('app.household_id', true)::uuid
   AND completed    = 0

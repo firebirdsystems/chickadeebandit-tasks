@@ -84,16 +84,6 @@ describe("manifest.json ai_access", () => {
     }
   });
 
-  it("each query file filters by household_id", () => {
-    for (const name of ai.db_exports) {
-      const path = join(__dirname, `../src/queries/${name}.sql`);
-      const sql = readFileSync(path, "utf-8");
-      expect(
-        sql.includes("household_id"),
-        `src/queries/${name}.sql must filter by household_id to prevent cross-household data leaks`
-      ).toBe(true);
-    }
-  });
 });
 
 // ── ai_access.db_mutations ────────────────────────────────────────────────────
@@ -133,16 +123,6 @@ describe("manifest.json ai_access.db_mutations", () => {
     }
   });
 
-  it("each mutation file filters by household_id", () => {
-    for (const name of ai.db_mutations) {
-      const path = join(__dirname, `../src/mutations/${name}.sql`);
-      const sql = readFileSync(path, "utf-8");
-      expect(
-        sql.includes("household_id"),
-        `src/mutations/${name}.sql must filter by household_id to prevent cross-household data writes`
-      ).toBe(true);
-    }
-  });
 });
 
 // ── ai_access SQL file validation ─────────────────────────────────────────────
@@ -174,15 +154,6 @@ if (manifest.ai_access) {
           if (!existsSync(path)) continue;
           const sql = readFileSync(path, "utf-8").trim();
           expect(keyword.test(sql), `src/${dir}/${name}.sql must start with ${label}, got: ${sql.slice(0, 50)}`).toBe(true);
-        }
-      });
-
-      it(`each SQL file filters by household_id`, () => {
-        for (const name of names) {
-          const path = join(__dirname, `../src/${dir}/${name}.sql`);
-          if (!existsSync(path)) continue;
-          const sql = readFileSync(path, "utf-8");
-          expect(sql.includes("household_id"), `src/${dir}/${name}.sql must filter by household_id`).toBe(true);
         }
       });
 

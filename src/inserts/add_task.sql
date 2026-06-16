@@ -1,6 +1,5 @@
-INSERT INTO tasks (
+INSERT INTO app_tasks__tasks (
   id,
-  household_id,
   list_id,
   title,
   notes,
@@ -13,8 +12,7 @@ INSERT INTO tasks (
   created_at,
   updated_at
 ) VALUES (
-  gen_random_uuid()::text,
-  current_setting('app.household_id', true)::uuid,
+  gen_random_uuid(),
   $2,
   $1,
   '',
@@ -24,6 +22,6 @@ INSERT INTO tasks (
   '[]',
   0,
   'ai',
-  NOW()::text,
-  NOW()::text
+  datetime('now'),
+  datetime('now')
 )
