@@ -29,6 +29,10 @@
   "nav": {
     "label": "Tasks"
   },
+  "widget": {
+    "label": "Tasks",
+    "size": "small"
+  },
   "resource_limits": {
     "max_db_bytes": 104857600
   },

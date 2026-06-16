@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tasks Widget</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--hub-font, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+      font-size: 13px;
+      background: #fff;
+      color: #111827;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px 8px;
+      border-bottom: 1px solid #e5e7eb;
+      flex-shrink: 0;
+    }
+    .header-title { font-size: 13px; font-weight: 700; color: #111827; }
+    .header-count { font-size: 11px; color: #6b7280; }
+
+    .task-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0;
+    }
+
+    .task-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      cursor: pointer;
+      transition: background .1s;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .task-row:last-child { border-bottom: none; }
+    .task-row:hover { background: #f9fafb; }
+    .task-row.done { opacity: .55; }
+
+    .check {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      border: 2px solid #d1d5db;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px;
+      color: transparent;
+      transition: all .15s;
+    }
+    .check.overdue { border-color: #dc2626; }
+    .task-row.done .check {
+      background: #16a34a;
+      border-color: #16a34a;
+      color: #fff;
+    }
+
+    .task-name {
+      flex: 1;
+      font-size: 12.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .task-row.done .task-name {
+      text-decoration: line-through;
+      color: #9ca3af;
+    }
+
+    .due-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .due-badge.overdue { background: #fee2e2; color: #dc2626; }
+    .due-badge.today   { background: #dbeafe; color: #1d4ed8; }
+
+    .footer {
+      padding: 7px 14px;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      background: #f9fafb;
+    }
+    .footer-status { font-size: 11px; color: #6b7280; }
+    .footer-status strong { color: #111827; }
+    .open-link {
+      font-size: 11px;
+      font-weight: 600;
+      color: #111827;
+      text-decoration: none;
+    }
+    .open-link:hover { text-decoration: underline; }
+
+    .empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+      font-size: 12px;
+      gap: 6px;
+      padding: 12px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<script type="module">
+import { esc } from "/hub-sdk.js";
+import { isOverdue, isToday, todayStr, parseLabels } from "./logic.js";
+
+const DB         = window.__DB_URL ?? "";
+const APP_ID     = window.__APP_ID ?? "tasks";
+const ME         = window.__CURRENT_MEMBER ?? null;
+
+let tasks = [];
+let completing = new Set();
+
+async function dbq(sql, params = []) {
+  if (!DB) return { rows: [] };
+  try {
+    const res = await fetch(DB, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sql, params }),
+    });
+    return res.json();
+  } catch { return { rows: [] }; }
+}
+
+async function load() {
+  if (!ME?.id) { render(); return; }
+
+  const { rows } = await dbq(
+    `SELECT id, title, due_date, priority, completed, assignee_id, created_by
+     FROM app_tasks__tasks
+     WHERE parent_id IS NULL
+       AND (assignee_id = ? OR (assignee_id IS NULL AND created_by = ?) OR (assignee_id IS NULL AND created_by IS NULL))
+     ORDER BY due_date, priority DESC, created_at`,
+    [ME.id, ME.id]
+  );
+  tasks = rows ?? [];
+  render();
+}
+
+async function toggleTask(id) {
+  if (completing.has(id)) return;
+  completing.add(id);
+
+  const t = tasks.find(t => t.id === id);
+  if (!t) { completing.delete(id); return; }
+
+  const newVal = t.completed ? 0 : 1;
+  t.completed = newVal;
+  render();
+
+  await dbq(
+    `UPDATE app_tasks__tasks SET completed = ?, completed_at = ?, updated_at = ? WHERE id = ?`,
+    [newVal, newVal ? new Date().toISOString() : null, new Date().toISOString(), id]
+  );
+  completing.delete(id);
+}
+
+function render() {
+  if (!ME?.id) {
+    document.body.innerHTML = `
+      <div class="header"><span class="header-title">✅ Tasks</span></div>
+      <div class="empty">
+        <span>Sign in to see your tasks</span>
+        <a href="/run/${APP_ID}" style="color:#111827;font-weight:600;font-size:11px">Open app →</a>
+      </div>`;
+    return;
+  }
+
+  const today = todayStr();
+  const visible = tasks.filter(t => !t.completed && (isOverdue(t, today) || isToday(t, today)));
+  const doneToday = tasks.filter(t => t.completed && t.due_date === today);
+  const totalOpen = tasks.filter(t => !t.completed).length;
+
+  const header = `
+    <div class="header">
+      <span class="header-title">✅ Tasks</span>
+      <span class="header-count">${totalOpen} open</span>
+    </div>`;
+
+  let content;
+  if (visible.length === 0 && !DB) {
+    content = `<div class="empty"><span>No tasks yet</span><a href="/run/${APP_ID}" style="color:#111827;font-weight:600;font-size:11px">Create tasks →</a></div>`;
+  } else if (visible.length === 0) {
+    content = `<div class="empty"><span>All caught up for today! 🎉</span></div>`;
+  } else {
+    // Overdue first, then today
+    const sorted = [...visible].sort((a, b) => {
+      const aOver = isOverdue(a, today), bOver = isOverdue(b, today);
+      if (aOver !== bOver) return aOver ? -1 : 1;
+      return (b.priority ?? 0) - (a.priority ?? 0);
+    });
+
+    content = `<div class="task-list">
+      ${sorted.map(t => {
+        const overdue = isOverdue(t, today);
+        const badge = overdue
+          ? `<span class="due-badge overdue">Overdue</span>`
+          : `<span class="due-badge today">Today</span>`;
+        return `<div class="task-row${t.completed ? ' done' : ''}" onclick="doToggle('${t.id}')">
+          <div class="check${overdue && !t.completed ? ' overdue' : ''}">${t.completed ? '✓' : ''}</div>
+          <span class="task-name">${esc(t.title)}</span>
+          ${badge}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  const doneCount = doneToday.length;
+  const footer = `
+    <div class="footer">
+      <span class="footer-status">${doneCount > 0 ? `<strong>${doneCount}</strong> done today` : 'Nothing done yet today'}</span>
+      <a class="open-link" href="/run/${APP_ID}">All tasks →</a>
+    </div>`;
+
+  document.body.innerHTML = header + content + footer;
+}
+
+window.doToggle = id => toggleTask(id).catch(() => {});
+
+load().catch(() => {});
+</script>
+</body>
+</html>
