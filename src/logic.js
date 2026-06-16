@@ -11,7 +11,8 @@ export const DAYS       = ["sun","mon","tue","wed","thu","fri","sat"];
 export const DAY_LABELS = ["S","M","T","W","T","F","S"];
 
 export function todayStr() {
-  return new Date().toISOString().split("T")[0];
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function parseLabels(s) {
@@ -68,7 +69,7 @@ export function nextDueDate(dueDate, rule) {
   } else if (freq === "yearly") {
     d.setFullYear(d.getFullYear() + interval);
   }
-  return d.toISOString().split("T")[0];
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function sortTasks(tasks) {

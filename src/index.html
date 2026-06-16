@@ -311,9 +311,7 @@ async function reloadLocal() {
 }
 
 // ── Task CRUD ─────────────────────────────────────────────────────────────────
-async function createTask(fields) {
-  const id = uid();
-  const ts = now();
+async function createTask(fields, id = uid(), ts = now()) {
   await dbRun(
     `INSERT INTO app_tasks__tasks (id,list_id,title,notes,assignee_id,due_date,due_time,priority,labels,recurrence,completed,parent_id,created_by,created_at,updated_at)
      VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?,?,?)`,
@@ -999,11 +997,29 @@ window.saveTask = async function() {
   };
 
   if (modalIsNew) {
+    const id = uid();
+    const ts = now();
+    localTasks.push({
+      id,
+      list_id: fields.list_id || null,
+      title: fields.title,
+      notes: fields.notes || "",
+      assignee_id: fields.assignee_id || null,
+      due_date: fields.due_date || null,
+      due_time: fields.due_time || null,
+      priority: fields.priority || 0,
+      labels: JSON.stringify(fields.labels || []),
+      recurrence: fields.recurrence ? JSON.stringify(fields.recurrence) : null,
+      completed: 0,
+      parent_id: null,
+      created_by: ME?.id || null,
+      created_at: ts,
+      updated_at: ts,
+    });
     closeModal();
-    await createTask(fields);
-    await reloadLocal();
     render();
     showToast("Task created");
+    await createTask(fields, id, ts);
   } else {
     const updateFields = { ...fields, labels: JSON.stringify(fields.labels), recurrence: fields.recurrence ? JSON.stringify(fields.recurrence) : null };
     const taskId = modalTask.id;
@@ -1113,16 +1129,18 @@ window.quickAdd = async function(e) {
   const val = inp.value.trim();
   if (!val) return;
   inp.value = "";
+
+  const id = uid();
+  const ts = now();
   const defaultList = activeListId || null;
-  await createTask({
-    title: val,
-    list_id: defaultList,
-    assignee_id: ME?.id || null,
-    priority: 0,
-    labels: [],
+  localTasks.push({
+    id, list_id: defaultList, title: val, notes: "", assignee_id: ME?.id || null,
+    due_date: null, due_time: null, priority: 0, labels: "[]", recurrence: null,
+    completed: 0, parent_id: null, created_by: ME?.id || null, created_at: ts, updated_at: ts,
   });
-  await reloadLocal();
   render();
+
+  await createTask({ title: val, list_id: defaultList, assignee_id: ME?.id || null, priority: 0, labels: [] }, id, ts);
 };
 
 // ── List Modal ────────────────────────────────────────────────────────────────
