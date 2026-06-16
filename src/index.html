@@ -301,9 +301,9 @@ async function load() {
 
 async function reloadLocal() {
   const [listsRes, localRes, subRes] = await Promise.all([
-    dbRun("SELECT * FROM lists ORDER BY sort_order, created_at"),
-    dbRun("SELECT * FROM tasks WHERE parent_id IS NULL ORDER BY due_date, priority DESC, created_at"),
-    dbRun("SELECT * FROM tasks WHERE parent_id IS NOT NULL ORDER BY created_at"),
+    dbRun("SELECT * FROM app_tasks__lists ORDER BY sort_order, created_at"),
+    dbRun("SELECT * FROM app_tasks__tasks WHERE parent_id IS NULL ORDER BY due_date, priority DESC, created_at"),
+    dbRun("SELECT * FROM app_tasks__tasks WHERE parent_id IS NOT NULL ORDER BY created_at"),
   ]);
   localLists    = listsRes.rows ?? [];
   localTasks    = localRes.rows ?? [];
@@ -315,7 +315,7 @@ async function createTask(fields) {
   const id = uid();
   const ts = now();
   await dbRun(
-    `INSERT INTO tasks (id,list_id,title,notes,assignee_id,due_date,due_time,priority,labels,recurrence,completed,parent_id,created_by,created_at,updated_at)
+    `INSERT INTO app_tasks__tasks (id,list_id,title,notes,assignee_id,due_date,due_time,priority,labels,recurrence,completed,parent_id,created_by,created_at,updated_at)
      VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?,?,?)`,
     [id, fields.list_id||null, fields.title, fields.notes||"",
      fields.assignee_id||null, fields.due_date||null, fields.due_time||null,
@@ -329,11 +329,11 @@ async function createTask(fields) {
 async function updateTask(id, fields) {
   const sets = Object.keys(fields).map(k => `${k}=?`).join(",");
   const vals = Object.values(fields);
-  await dbRun(`UPDATE tasks SET ${sets}, updated_at=? WHERE id=?`, [...vals, now(), id]);
+  await dbRun(`UPDATE app_tasks__tasks SET ${sets}, updated_at=? WHERE id=?`, [...vals, now(), id]);
 }
 
 async function deleteTask(id) {
-  await dbRun("DELETE FROM tasks WHERE id=? OR parent_id=?", [id, id]);
+  await dbRun("DELETE FROM app_tasks__tasks WHERE id=? OR parent_id=?", [id, id]);
 }
 
 async function completeTask(id) {
@@ -399,7 +399,7 @@ async function completeTask(id) {
 async function createList(name, color, memberId) {
   const id = uid();
   await dbRun(
-    "INSERT INTO lists (id,name,color,member_id,sort_order,created_at) VALUES (?,?,?,?,?,?)",
+    "INSERT INTO app_tasks__lists (id,name,color,member_id,sort_order,created_at) VALUES (?,?,?,?,?,?)",
     [id, name, color, memberId||null, localLists.length, now()]
   );
   return id;
@@ -407,12 +407,12 @@ async function createList(name, color, memberId) {
 
 async function updateList(id, fields) {
   const sets = Object.keys(fields).map(k => `${k}=?`).join(",");
-  await dbRun(`UPDATE lists SET ${sets} WHERE id=?`, [...Object.values(fields), id]);
+  await dbRun(`UPDATE app_tasks__lists SET ${sets} WHERE id=?`, [...Object.values(fields), id]);
 }
 
 async function deleteList(id) {
-  await dbRun("UPDATE tasks SET list_id=NULL WHERE list_id=?", [id]);
-  await dbRun("DELETE FROM lists WHERE id=?", [id]);
+  await dbRun("UPDATE app_tasks__tasks SET list_id=NULL WHERE list_id=?", [id]);
+  await dbRun("DELETE FROM app_tasks__lists WHERE id=?", [id]);
 }
 
 // ── Synced (existing) ─────────────────────────────────────────────────────────
@@ -1090,7 +1090,7 @@ window.addSubtask = async function(e, parentId) {
   const id = uid();
   const ts = now();
   await dbRun(
-    `INSERT INTO tasks (id,list_id,title,notes,assignee_id,due_date,due_time,priority,labels,recurrence,completed,parent_id,created_by,created_at,updated_at)
+    `INSERT INTO app_tasks__tasks (id,list_id,title,notes,assignee_id,due_date,due_time,priority,labels,recurrence,completed,parent_id,created_by,created_at,updated_at)
      VALUES (?,?,?,?,?,?,?,0,'[]',NULL,0,?,?,?,?)`,
     [id, null, val, "", null, null, null, parentId, ME?.id||null, ts, ts]
   );
@@ -1100,7 +1100,7 @@ window.addSubtask = async function(e, parentId) {
 };
 
 window.deleteSubtask = async function(id) {
-  await dbRun("DELETE FROM tasks WHERE id=?", [id]);
+  await dbRun("DELETE FROM app_tasks__tasks WHERE id=?", [id]);
   await reloadLocal();
   if (modalTask) renderSubtaskList(modalTask.id);
 };
