@@ -27,3 +27,15 @@ CREATE TABLE IF NOT EXISTS app_tasks__tasks (
   updated_at   TEXT NOT NULL,
   PRIMARY KEY (id)
 );
+
+CREATE INDEX IF NOT EXISTS app_tasks__idx_lists_member_sort
+  ON app_tasks__lists(member_id, sort_order, created_at);
+
+CREATE INDEX IF NOT EXISTS app_tasks__idx_tasks_assignee_parent_due
+  ON app_tasks__tasks(assignee_id, parent_id, completed, due_date, priority, created_at);
+
+CREATE INDEX IF NOT EXISTS app_tasks__idx_tasks_list
+  ON app_tasks__tasks(list_id);
+
+CREATE INDEX IF NOT EXISTS app_tasks__idx_tasks_parent
+  ON app_tasks__tasks(parent_id);

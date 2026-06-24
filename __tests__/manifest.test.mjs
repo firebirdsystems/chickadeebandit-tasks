@@ -38,6 +38,18 @@ describe("manifest.json", () => {
     expect(Array.isArray(manifest.data_access.reads)).toBe(true);
     expect(Array.isArray(manifest.data_access.writes)).toBe(true);
   });
+
+  it("enforces member ownership and keeps due dates queryable", () => {
+    expect(manifest.row_policies?.lists).toEqual({
+      kind: "owner_only",
+      member_column: "member_id",
+    });
+    expect(manifest.row_policies?.tasks).toEqual({
+      kind: "owner_only",
+      member_column: "assignee_id",
+    });
+    expect(manifest.db_plaintext_columns).toContain("due_date");
+  });
 });
 
 // ── ai_access ─────────────────────────────────────────────────────────────────
@@ -84,6 +96,14 @@ describe("manifest.json ai_access", () => {
     }
   });
 
+});
+
+describe("D1 compatibility", () => {
+  it("does not use PostgreSQL UUID functions", () => {
+    const sql = readFileSync(join(__dirname, "../src/inserts/add_task.sql"), "utf-8");
+    expect(sql).not.toMatch(/gen_random_uuid/i);
+    expect(sql).toMatch(/randomblob/i);
+  });
 });
 
 // ── ai_access.db_mutations ────────────────────────────────────────────────────

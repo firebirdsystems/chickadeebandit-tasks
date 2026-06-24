@@ -275,16 +275,19 @@ function now() { return new Date().toISOString(); }
 function memberById(id) { return members.find(m => m.id === id); }
 function memberName(id) { return memberById(id)?.name ?? "Unknown"; }
 function mcolor(id) { return memberColor(id, members); }
+function jsArg(value) { return esc(JSON.stringify(String(value))); }
+function safeListColor(value) { return LIST_COLORS.includes(value) ? value : LIST_COLORS[0]; }
 
 // ── Load data ─────────────────────────────────────────────────────────────────
 async function load() {
   await initDB();
-  const [ctxRes, tasksRes, connRes, listsRes, localRes] = await Promise.all([
+  const [ctxRes, tasksRes, connRes, listsRes, localRes, subRes] = await Promise.all([
     fetch(`${CONTEXT}?keys=family.members`).then(r => r.json()).catch(() => ({ "family.members": [] })),
-    fetch("/api/tasks").then(r => r.json()).catch(() => []),
+    fetch(`/api/tasks${ME?.id ? `?memberId=${encodeURIComponent(ME.id)}` : ""}`).then(r => r.json()).catch(() => []),
     fetch("/api/tasks/connections").then(r => r.json()).catch(() => []),
     dbRun("SELECT * FROM app_tasks__lists ORDER BY sort_order, created_at"),
     dbRun("SELECT * FROM app_tasks__tasks WHERE parent_id IS NULL ORDER BY due_date, priority DESC, created_at"),
+    dbRun("SELECT * FROM app_tasks__tasks WHERE parent_id IS NOT NULL ORDER BY created_at"),
   ]);
   members     = ctxRes["family.members"] ?? [];
   syncedTasks = Array.isArray(tasksRes) ? tasksRes : [];
@@ -292,8 +295,6 @@ async function load() {
   localLists  = listsRes.rows ?? [];
   localTasks  = localRes.rows ?? [];
 
-  // Load subtasks
-  const subRes = await dbRun("SELECT * FROM app_tasks__tasks WHERE parent_id IS NOT NULL ORDER BY created_at");
   localSubtasks = subRes.rows ?? [];
 
   render();
@@ -413,19 +414,6 @@ async function deleteList(id) {
   await dbRun("DELETE FROM app_tasks__lists WHERE id=?", [id]);
 }
 
-// ── Synced (existing) ─────────────────────────────────────────────────────────
-async function toggleSyncedTask(id) {
-  const task = syncedTasks.find(t => t.id === id);
-  if (!task) return;
-  task.completed = !task.completed;
-  render();
-  await fetch(`/api/tasks/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ completed: task.completed }),
-  }).catch(() => {});
-}
-
 async function syncAll() {
   const btn = document.getElementById("sync-btn");
   if (!btn) return;
@@ -513,11 +501,11 @@ function renderTaskRow(t) {
   const overdue = isOverdue(t);
 
   return `
-    <div class="task-row ${t.completed ? 'done-row' : ''}" onclick="openTask('${t.id}')">
+    <div class="task-row ${t.completed ? 'done-row' : ''}" onclick="openTask(${jsArg(t.id)})">
       ${renderPriorityBar(t.priority)}
       <div class="task-row-inner">
         <button class="check ${t.completed ? 'done' : ''} ${overdue ? 'overdue-check' : ''}"
-          onclick="event.stopPropagation();completeTask('${t.id}')">
+          onclick="event.stopPropagation();completeTask(${jsArg(t.id)})">
           ${t.completed ? "✓" : ""}
         </button>
         <div class="task-body">
@@ -529,8 +517,8 @@ function renderTaskRow(t) {
         </div>
         <div class="task-right">
           ${due ? `<span class="due-badge ${due.cls}">${esc(due.label)}</span>` : ""}
-          ${assignee ? `<div class="avatar" style="background:${mcolor(assignee.id)}" title="${esc(assignee.name)}">${initial(assignee.name)}</div>` : ""}
-          ${t.list_id ? (() => { const l = localLists.find(x => x.id === t.list_id); return l ? `<span class="tag" style="background:${l.color}18;color:${l.color}">${esc(l.name)}</span>` : ""; })() : ""}
+          ${assignee ? `<div class="avatar" style="background:${mcolor(assignee.id)}" title="${esc(assignee.name)}">${esc(initial(assignee.name))}</div>` : ""}
+          ${t.list_id ? (() => { const l = localLists.find(x => x.id === t.list_id); const color = safeListColor(l?.color); return l ? `<span class="tag" style="background:${color}18;color:${color}">${esc(l.name)}</span>` : ""; })() : ""}
         </div>
       </div>
     </div>`;
@@ -552,8 +540,8 @@ function renderMineTab() {
       <button class="list-pill ${!activeListId?'active':''}" style="${!activeListId?'background:var(--accent);color:#fff':''}" onclick="setActiveList(null)">All</button>
       ${visibleLists.map(l => `
         <button class="list-pill ${activeListId===l.id?'active':''}"
-          style="${activeListId===l.id?`background:${l.color};color:#fff`:''}"
-          onclick="setActiveList('${l.id}')">${esc(l.name)}</button>
+          style="${activeListId===l.id?`background:${safeListColor(l.color)};color:#fff`:''}"
+          onclick="setActiveList(${jsArg(l.id)})">${esc(l.name)}</button>
       `).join("")}
       <button class="list-pill-add" onclick="openNewList()">+ List</button>
     </div>` : `<div class="lists-row"><button class="list-pill-add" onclick="openNewList()">+ New List</button></div>`}
@@ -590,7 +578,7 @@ function renderFamilyTab() {
       <div class="task-group">
         <div class="task-group-header">
           <div class="member">
-            ${m ? `<div class="avatar-lg" style="background:${mcolor(membId)}">${initial(m.name)}</div>${esc(m.name)}` : `<div class="avatar-lg" style="background:#9ca3af">?</div>Unassigned`}
+            ${m ? `<div class="avatar-lg" style="background:${mcolor(membId)}">${esc(initial(m.name))}</div>${esc(m.name)}` : `<div class="avatar-lg" style="background:#9ca3af">?</div>Unassigned`}
           </div>
           <span class="task-count">${open} open</span>
         </div>
@@ -629,7 +617,7 @@ function renderSyncedTab() {
       <div class="task-group">
         <div class="task-group-header">
           <div class="member">
-            ${m ? `<div class="avatar-lg" style="background:${mcolor(memberId)}">${initial(m.name)}</div>${esc(m.name)}` : memberId}
+            ${m ? `<div class="avatar-lg" style="background:${mcolor(memberId)}">${esc(initial(m.name))}</div>${esc(m.name)}` : esc(memberId)}
           </div>
           <span class="task-count">${open} open · ${mTasks.length} total</span>
         </div>
@@ -649,10 +637,9 @@ function renderSyncedTab() {
             <div class="task-row ${t.completed?'done-row':''}" style="cursor:default">
               <div class="priority-bar"></div>
               <div class="task-row-inner">
-                <button class="check ${t.completed?'done':''} ${overdue?'overdue-check':''}"
-                  onclick="toggleSyncedTask('${t.id}')">
+                <div class="check ${t.completed?'done':''} ${overdue?'overdue-check':''}" aria-hidden="true">
                   ${t.completed ? "✓" : ""}
-                </button>
+                </div>
                 <div class="task-body">
                   <div class="task-title ${t.completed?'done':''}">${esc(t.title)}</div>
                   <div class="task-sub">
@@ -690,7 +677,7 @@ function renderConnectionsTab() {
         </div>
       </div>
       <div class="conn-actions">
-        <button class="btn-sm" onclick="syncConnection('${c.id}')">Sync</button>
+        <button class="btn-sm" onclick="syncConnection(${jsArg(c.id)})">Sync</button>
       </div>
     </div>
   `).join("");
@@ -735,6 +722,7 @@ function buildModalForm(task, isNew) {
   const recurCount  = recur?.count || "";
   const recurEndDate = recur?.end_date || "";
   const visibleLists = localLists.filter(l => !l.member_id || l.member_id === ME?.id);
+  const assignableMembers = isAdult(ME, members) ? members : members.filter(m => m.id === ME?.id);
 
   // Subtasks
   const subs = localSubtasks.filter(s => s.parent_id === task.id);
@@ -760,25 +748,25 @@ function buildModalForm(task, isNew) {
     <div class="field-row">
       <div class="field">
         <label>Due date</label>
-        <input type="date" id="f-due-date" value="${task.due_date||""}" />
+        <input type="date" id="f-due-date" value="${esc(task.due_date||"")}" />
       </div>
       <div class="field">
         <label>Due time</label>
-        <input type="time" id="f-due-time" value="${task.due_time||""}" />
+        <input type="time" id="f-due-time" value="${esc(task.due_time||"")}" />
       </div>
     </div>
     <div class="field">
       <label>Assignee</label>
       <select id="f-assignee">
-        <option value="">— Unassigned —</option>
-        ${members.map(m => `<option value="${m.id}" ${task.assignee_id===m.id?'selected':''}>${esc(m.name)}</option>`).join("")}
+        ${isAdult(ME, members) ? `<option value="">— Unassigned —</option>` : ""}
+        ${assignableMembers.map(m => `<option value="${esc(m.id)}" ${task.assignee_id===m.id?'selected':''}>${esc(m.name)}</option>`).join("")}
       </select>
     </div>
     <div class="field">
       <label>List</label>
       <select id="f-list">
         <option value="">— No list —</option>
-        ${visibleLists.map(l => `<option value="${l.id}" ${task.list_id===l.id?'selected':''}>${esc(l.name)}</option>`).join("")}
+        ${visibleLists.map(l => `<option value="${esc(l.id)}" ${task.list_id===l.id?'selected':''}>${esc(l.name)}</option>`).join("")}
       </select>
     </div>
     <div class="field">
@@ -818,10 +806,10 @@ function buildModalForm(task, isNew) {
             </select>
           </div>
           <div id="recur-count-wrap" style="margin-top:8px;display:${recurEndType==='count'?'block':'none'}">
-            <input type="number" id="f-recur-count" value="${recurCount}" min="1" placeholder="Times" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem" />
+            <input type="number" id="f-recur-count" value="${esc(recurCount)}" min="1" placeholder="Times" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem" />
           </div>
           <div id="recur-date-wrap" style="margin-top:8px;display:${recurEndType==='date'?'block':'none'}">
-            <input type="date" id="f-recur-end-date" value="${recurEndDate}" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem" />
+            <input type="date" id="f-recur-end-date" value="${esc(recurEndDate)}" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem" />
           </div>
         </div>
       </div>
@@ -831,16 +819,16 @@ function buildModalForm(task, isNew) {
       <label>Subtasks</label>
       <ul class="subtask-list" id="subtask-list">
         ${subs.map(s => `
-          <li class="subtask-item" data-sub="${s.id}">
-            <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask('${s.id}')">${s.completed?'✓':''}</button>
+          <li class="subtask-item" data-sub="${esc(s.id)}">
+            <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask(${jsArg(s.id)})">${s.completed?'✓':''}</button>
             <span class="subtask-title ${s.completed?'done':''}">${esc(s.title)}</span>
-            <button class="btn-sm" style="padding:3px 8px;font-size:.7rem" onclick="deleteSubtask('${s.id}')">×</button>
+            <button class="btn-sm" style="padding:3px 8px;font-size:.7rem" onclick="deleteSubtask(${jsArg(s.id)})">×</button>
           </li>
         `).join("")}
       </ul>
       <div style="display:flex;gap:8px">
-        <input type="text" id="sub-input" placeholder="Add subtask…" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem" onkeydown="addSubtask(event,'${task.id}')" />
-        <button class="btn-ghost" onclick="addSubtask(null,'${task.id}')">Add</button>
+        <input type="text" id="sub-input" placeholder="Add subtask…" style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem" onkeydown="addSubtask(event,${jsArg(task.id)})" />
+        <button class="btn-ghost" onclick="addSubtask(null,${jsArg(task.id)})">Add</button>
       </div>
     </div>` : ""}
   `;
@@ -857,8 +845,8 @@ function buildModalFooter(task, isNew) {
   }
   return `
     <div style="display:flex;gap:6px">
-      <button class="btn-danger" onclick="confirmDeleteTask('${task.id}')">Delete</button>
-      <button class="btn-ghost" onclick="duplicateTask('${task.id}')">Duplicate</button>
+      <button class="btn-danger" onclick="confirmDeleteTask(${jsArg(task.id)})">Delete</button>
+      <button class="btn-ghost" onclick="duplicateTask(${jsArg(task.id)})">Duplicate</button>
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn-ghost" onclick="closeModal()">Cancel</button>
@@ -1068,10 +1056,10 @@ function renderSubtaskList(parentId) {
   if (!list) return;
   const subs = localSubtasks.filter(s => s.parent_id === parentId);
   list.innerHTML = subs.map(s => `
-    <li class="subtask-item" data-sub="${s.id}">
-      <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask('${s.id}')">${s.completed?'✓':''}</button>
+    <li class="subtask-item" data-sub="${esc(s.id)}">
+      <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask(${jsArg(s.id)})">${s.completed?'✓':''}</button>
       <span class="subtask-title ${s.completed?'done':''}">${esc(s.title)}</span>
-      <button class="btn-sm" style="padding:3px 8px;font-size:.7rem" onclick="deleteSubtask('${s.id}')">×</button>
+      <button class="btn-sm" style="padding:3px 8px;font-size:.7rem" onclick="deleteSubtask(${jsArg(s.id)})">×</button>
     </li>
   `).join("");
 }
@@ -1105,10 +1093,12 @@ window.addSubtask = async function(e, parentId) {
   if (!val) return;
   const id = uid();
   const ts = now();
+  const parent = localTasks.find(t => t.id === parentId);
+  const assigneeId = parent?.assignee_id || ME?.id || null;
   await dbRun(
     `INSERT INTO app_tasks__tasks (id,list_id,title,notes,assignee_id,due_date,due_time,priority,labels,recurrence,completed,parent_id,created_by,created_at,updated_at)
      VALUES (?,?,?,?,?,?,?,0,'[]',NULL,0,?,?,?,?)`,
-    [id, null, val, "", null, null, null, parentId, ME?.id||null, ts, ts]
+    [id, null, val, "", assigneeId, null, null, parentId, ME?.id||null, ts, ts]
   );
   inp.value = "";
   await reloadLocal();
@@ -1145,7 +1135,7 @@ window.quickAdd = async function(e) {
 
 // ── List Modal ────────────────────────────────────────────────────────────────
 function openListModal(list, isNew) {
-  listModalData = list ? { ...list } : { id: null, name: "", color: LIST_COLORS[0], member_id: ME?.id || null };
+  listModalData = list ? { ...list, color: safeListColor(list.color) } : { id: null, name: "", color: LIST_COLORS[0], member_id: ME?.id || null };
   const ln = listModalData;
   document.getElementById("list-modal-title").textContent = isNew ? "New List" : "Edit List";
   document.getElementById("list-modal-body").innerHTML = `
@@ -1165,14 +1155,13 @@ function openListModal(list, isNew) {
     <div class="field">
       <label>Visibility</label>
       <select id="lf-member">
-        <option value="">Shared (all family)</option>
-        ${members.map(m => `<option value="${m.id}" ${ln.member_id===m.id?'selected':''}>${esc(m.name)} only</option>`).join("")}
+        ${members.map(m => `<option value="${esc(m.id)}" ${ln.member_id===m.id?'selected':''}>${esc(m.name)} only</option>`).join("")}
       </select>
     </div>` : ""}
   `;
   document.getElementById("list-modal-footer").innerHTML = `
     <div>
-      ${!isNew ? `<button class="btn-danger" onclick="confirmDeleteList('${ln.id}')">Delete</button>` : ""}
+      ${!isNew ? `<button class="btn-danger" onclick="confirmDeleteList(${jsArg(ln.id)})">Delete</button>` : ""}
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn-ghost" onclick="closeListModal()">Cancel</button>
@@ -1207,7 +1196,7 @@ window.saveList = async function(isNew) {
   if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
   const color = listModalData?.color || LIST_COLORS[0];
   const memberId = isAdult(ME, members)
-    ? (document.getElementById("lf-member")?.value || null)
+    ? (document.getElementById("lf-member")?.value || ME?.id || null)
     : (ME?.id || null);
 
   if (isNew) {
@@ -1236,7 +1225,6 @@ window.setTab        = (t) => { activeTab = t; render(); };
 window.setMineFilter = (f) => { mineFilter = f; render(); };
 window.setActiveList = (id) => { activeListId = id; render(); };
 window.completeTask  = completeTask;
-window.toggleSyncedTask = toggleSyncedTask;
 window.syncAll       = syncAll;
 window.syncConnection = syncConnection;
 
@@ -1249,7 +1237,7 @@ function handleDeepLink() {
 load().then(handleDeepLink).catch(err => {
   console.error("Tasks failed to load:", err);
   const root = document.getElementById("root");
-  if (root) root.innerHTML = `<div class="empty"><h3>Failed to load</h3><p>${err?.message ?? "Unknown error"}</p></div>`;
+  if (root) root.innerHTML = `<div class="empty"><h3>Failed to load</h3><p>${esc(err?.message ?? "Unknown error")}</p></div>`;
 });
 </script>
 </body>

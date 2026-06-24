@@ -26,6 +26,17 @@
     "requires_approval": false
   },
   "storage": "db",
+  "db_plaintext_columns": ["due_date"],
+  "row_policies": {
+    "lists": {
+      "kind": "owner_only",
+      "member_column": "member_id"
+    },
+    "tasks": {
+      "kind": "owner_only",
+      "member_column": "assignee_id"
+    }
+  },
   "nav": {
     "label": "Tasks"
   },

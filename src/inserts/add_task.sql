@@ -12,7 +12,7 @@ INSERT INTO app_tasks__tasks (
   created_at,
   updated_at
 ) VALUES (
-  gen_random_uuid(),
+  lower(hex(randomblob(16))),
   $2,
   $1,
   '',

@@ -131,6 +131,7 @@ const ME         = window.__CURRENT_MEMBER ?? null;
 
 let tasks = [];
 let completing = new Set();
+function jsArg(value) { return esc(JSON.stringify(String(value))); }
 
 async function dbq(sql, params = []) {
   if (!DB) return { rows: [] };
@@ -218,7 +219,7 @@ function render() {
         const badge = overdue
           ? `<span class="due-badge overdue">Overdue</span>`
           : `<span class="due-badge today">Today</span>`;
-        return `<div class="task-row${t.completed ? ' done' : ''}" onclick="doToggle('${t.id}')">
+        return `<div class="task-row${t.completed ? ' done' : ''}" onclick="doToggle(${jsArg(t.id)})">
           <div class="check${overdue && !t.completed ? ' overdue' : ''}">${t.completed ? '✓' : ''}</div>
           <span class="task-name">${esc(t.title)}</span>
           ${badge}
