@@ -41,8 +41,10 @@ describe("manifest.json", () => {
 
   it("enforces member ownership and keeps due dates queryable", () => {
     expect(manifest.row_policies?.lists).toEqual({
-      kind: "owner_only",
+      kind: "owner_or_visibility",
       member_column: "member_id",
+      visibility_column: "visibility",
+      everyone_values: ["everyone"],
     });
     expect(manifest.row_policies?.tasks).toEqual({
       kind: "owner_only",
