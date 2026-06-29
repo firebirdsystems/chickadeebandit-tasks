@@ -26,6 +26,7 @@
     "requires_approval": false
   },
   "storage": "db",
+  "db_encryption": "off",
   "db_plaintext_columns": ["due_date"],
   "row_policies": {
     "lists": {
