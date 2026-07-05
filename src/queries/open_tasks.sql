@@ -19,7 +19,8 @@ LEFT JOIN app_tasks__lists l
 WHERE t.completed = 0
   AND t.parent_id IS NULL
 ORDER BY
-  t.due_date NULLS LAST,
+  (t.due_date IS NULL),
+  t.due_date,
   t.priority DESC,
   t.created_at
 LIMIT 200
