@@ -45,6 +45,7 @@ describe("manifest.json", () => {
       member_column: "member_id",
       visibility_column: "visibility",
       everyone_values: ["everyone"],
+      write_visibility_scoped: true,
     });
     expect(manifest.row_policies?.tasks).toEqual({
       kind: "owner_only",

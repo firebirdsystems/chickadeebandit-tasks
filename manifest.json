@@ -33,7 +33,8 @@
       "kind": "owner_or_visibility",
       "member_column": "member_id",
       "visibility_column": "visibility",
-      "everyone_values": ["everyone"]
+      "everyone_values": ["everyone"],
+      "write_visibility_scoped": true
     },
     "tasks": {
       "kind": "owner_only",

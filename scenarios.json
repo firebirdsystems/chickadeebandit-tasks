@@ -1,0 +1,36 @@
+{
+  "scenarios": [
+    {
+      "name": "private lists are hidden from other members, shared lists are visible",
+      "members": { "owner": "adult", "other": "adult" },
+      "steps": [
+        {
+          "action": "db",
+          "as": "owner",
+          "sql": "INSERT INTO app_tasks__lists (id, name, member_id, visibility, created_at) VALUES (?, ?, ?, ?, ?)",
+          "params": ["l-pub", "Shared", "{{owner}}", "everyone", "2026-01-01T00:00:00Z"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "owner",
+          "sql": "INSERT INTO app_tasks__lists (id, name, member_id, visibility, created_at) VALUES (?, ?, ?, ?, ?)",
+          "params": ["l-priv", "Private", "{{owner}}", "private", "2026-01-01T00:00:00Z"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "other",
+          "sql": "SELECT id FROM app_tasks__lists ORDER BY id",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "id": "l-pub" }] }
+        },
+        {
+          "action": "db",
+          "as": "owner",
+          "sql": "SELECT id FROM app_tasks__lists ORDER BY id",
+          "expect": { "status": 200, "rowCount": 2 }
+        }
+      ]
+    }
+  ]
+}
