@@ -1,7 +1,7 @@
 {
   "id": "tasks",
   "name": "Tasks",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Create tasks with due dates, priorities, labels, recurrence, and subtasks. Assign to family members. Also syncs with Google Tasks and Apple Reminders.",
   "entrypoint": "index.html",
   "runtime": "static",
@@ -43,6 +43,14 @@
   },
   "nav": {
     "label": "Tasks"
+  },
+  "agenda": {
+    "kind": "task",
+    "label": "Tasks",
+    "source": {
+      "kind": "sql",
+      "query": "SELECT id AS id, title AS title, CASE WHEN due_time IS NULL OR due_time = '' THEN due_date ELSE due_date || 'T' || due_time END AS when_at, (completed = 1) AS done, NULLIF(notes, '') AS subtitle, NULLIF(assignee_id, '') AS member_id FROM app_tasks__tasks WHERE due_date = :today AND parent_id IS NULL ORDER BY completed, priority DESC, due_time LIMIT 20"
+    }
   },
   "widget": {
     "label": "Tasks",
