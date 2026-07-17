@@ -31,6 +31,38 @@
           "expect": { "status": 200, "rowCount": 2 }
         }
       ]
+    },
+    {
+      "name": "quick-add inbox is household-shared (un-policied) so any member can triage kiosk captures",
+      "members": { "owner": "adult", "other": "adult" },
+      "steps": [
+        {
+          "action": "db",
+          "as": "owner",
+          "sql": "INSERT INTO app_tasks__inbox (id, title, title_normalized, added_by_name, created_at) VALUES (?, ?, lower(trim(?)), ?, ?)",
+          "params": ["i-1", "Call plumber", "Call plumber", "Kitchen Kiosk", "2026-01-01T00:00:00Z"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "other",
+          "sql": "SELECT id, title FROM app_tasks__inbox",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "id": "i-1" }] }
+        },
+        {
+          "action": "db",
+          "as": "other",
+          "sql": "DELETE FROM app_tasks__inbox WHERE id=?",
+          "params": ["i-1"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "owner",
+          "sql": "SELECT id FROM app_tasks__inbox",
+          "expect": { "status": 200, "rowCount": 0 }
+        }
+      ]
     }
   ]
 }

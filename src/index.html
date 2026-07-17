@@ -71,6 +71,18 @@
     .task-group-header .member { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.88rem; }
     .task-count { font-size: 0.76rem; color: var(--muted); }
 
+    /* Quick-add inbox */
+    .inbox-group { border-color: var(--accent); }
+    .inbox-icon { font-size: 0.95rem; }
+    .inbox-hint { padding: 8px 16px; font-size: 0.76rem; color: var(--muted); border-bottom: 1px solid var(--border); background: var(--card); }
+    .inbox-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--card); }
+    .inbox-row:last-child { border-bottom: none; }
+    .inbox-body { flex: 1; min-width: 0; }
+    .inbox-title { font-size: 0.9rem; font-weight: 500; color: var(--text); word-break: break-word; }
+    .inbox-meta { font-size: 0.74rem; color: var(--muted); margin-top: 2px; }
+    .inbox-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .inbox-actions .btn-sm.btn-primary { color: #fff; border: none; }
+
     /* Task row */
     .task-row { display: flex; align-items: flex-start; gap: 0; padding: 0; border-bottom: 1px solid var(--border); cursor: pointer; background: var(--card); transition: background .1s; }
     .task-row:last-child { border-bottom: none; }
@@ -238,6 +250,8 @@ const LIST_COLORS = ["#4f46e5","#0891b2","#16a34a","#d97706","#dc2626","#7c3aed"
 // State
 let members = [], syncedTasks = [], connections = [];
 let localLists = [], localTasks = [], localSubtasks = [];
+let inboxItems = [];             // household-shared quick-add captures (from kiosk)
+let pendingInboxId = null;       // inbox row to consume when the next new-task save succeeds
 let activeTab = "mine";
 let mineFilter = "all";
 let activeListId = null;
@@ -281,19 +295,21 @@ function safeListColor(value) { return LIST_COLORS.includes(value) ? value : LIS
 // ── Load data ─────────────────────────────────────────────────────────────────
 async function load() {
   await initDB();
-  const [ctxRes, tasksRes, connRes, listsRes, localRes, subRes] = await Promise.all([
+  const [ctxRes, tasksRes, connRes, listsRes, localRes, subRes, inboxRes] = await Promise.all([
     fetch(`${CONTEXT}?keys=family.members`).then(r => r.json()).catch(() => ({ "family.members": [] })),
     fetch(`/api/tasks${ME?.id ? `?memberId=${encodeURIComponent(ME.id)}` : ""}`).then(r => r.json()).catch(() => []),
     fetch("/api/tasks/connections").then(r => r.json()).catch(() => []),
     dbRun("SELECT * FROM app_tasks__lists ORDER BY sort_order, created_at"),
     dbRun("SELECT * FROM app_tasks__tasks WHERE parent_id IS NULL ORDER BY due_date, priority DESC, created_at"),
     dbRun("SELECT * FROM app_tasks__tasks WHERE parent_id IS NOT NULL ORDER BY created_at"),
+    dbRun("SELECT * FROM app_tasks__inbox ORDER BY created_at DESC, title"),
   ]);
   members     = ctxRes["family.members"] ?? [];
   syncedTasks = Array.isArray(tasksRes) ? tasksRes : [];
   connections = Array.isArray(connRes)  ? connRes  : [];
   localLists  = listsRes.rows ?? [];
   localTasks  = localRes.rows ?? [];
+  inboxItems  = inboxRes.rows ?? [];
 
   localSubtasks = subRes.rows ?? [];
 
@@ -301,14 +317,16 @@ async function load() {
 }
 
 async function reloadLocal() {
-  const [listsRes, localRes, subRes] = await Promise.all([
+  const [listsRes, localRes, subRes, inboxRes] = await Promise.all([
     dbRun("SELECT * FROM app_tasks__lists ORDER BY sort_order, created_at"),
     dbRun("SELECT * FROM app_tasks__tasks WHERE parent_id IS NULL ORDER BY due_date, priority DESC, created_at"),
     dbRun("SELECT * FROM app_tasks__tasks WHERE parent_id IS NOT NULL ORDER BY created_at"),
+    dbRun("SELECT * FROM app_tasks__inbox ORDER BY created_at DESC, title"),
   ]);
   localLists    = listsRes.rows ?? [];
   localTasks    = localRes.rows ?? [];
   localSubtasks = subRes.rows ?? [];
+  inboxItems    = inboxRes.rows ?? [];
 }
 
 // ── Task CRUD ─────────────────────────────────────────────────────────────────
@@ -527,11 +545,34 @@ function renderTaskRow(t) {
     </div>`;
 }
 
+function renderInbox() {
+  if (!inboxItems.length) return "";
+  return `
+    <div class="task-group inbox-group">
+      <div class="task-group-header">
+        <div class="member"><span class="inbox-icon">📥</span> Inbox <span class="task-count">${inboxItems.length} to sort</span></div>
+      </div>
+      <div class="inbox-hint">Quick-added from a shared device. Turn each into a task or dismiss it.</div>
+      ${inboxItems.map(it => `
+        <div class="inbox-row">
+          <div class="inbox-body">
+            <div class="inbox-title">${esc(it.title)}</div>
+            ${it.added_by_name ? `<div class="inbox-meta">Added by ${esc(it.added_by_name)}</div>` : ""}
+          </div>
+          <div class="inbox-actions">
+            <button class="btn-sm btn-primary" onclick="assignInboxItem(${jsArg(it.id)})">Make task</button>
+            <button class="btn-sm" onclick="dismissInboxItem(${jsArg(it.id)})">Dismiss</button>
+          </div>
+        </div>`).join("")}
+    </div>`;
+}
+
 function renderMineTab() {
   const tasks = filterLocalTasks();
   const visibleLists = localLists.filter(l => l.visibility === "everyone" || l.member_id === ME?.id);
 
   return `
+    ${renderInbox()}
     <div class="filter-bar">
       ${["all","today","upcoming","overdue","done"].map(f =>
         `<button class="chip ${mineFilter===f?'active':''}" onclick="setMineFilter('${f}')">${f[0].toUpperCase()+f.slice(1)}</button>`
@@ -868,12 +909,38 @@ function openTaskModal(task, isNew) {
 }
 
 window.openNewTask = function() {
+  pendingInboxId = null;
   const defaultList = activeListId || (localLists.find(l => l.visibility === "everyone" || l.member_id === ME?.id)?.id || null);
   openTaskModal({
     id: null, list_id: defaultList, title: "", notes: "", assignee_id: ME?.id || null,
     due_date: null, due_time: null, priority: 0, labels: "[]", recurrence: null,
     completed: 0, parent_id: null,
   }, true);
+};
+
+// Turn a quick-add capture into a real (owner_only) task: open the New Task
+// modal prefilled with the captured title. The inbox row is consumed only when
+// the task is actually saved (see saveTask), so cancelling leaves it in place.
+window.assignInboxItem = function(inboxId) {
+  const item = inboxItems.find(i => i.id === inboxId);
+  if (!item) return;
+  const defaultList = activeListId || (localLists.find(l => l.visibility === "everyone" || l.member_id === ME?.id)?.id || null);
+  openTaskModal({
+    id: null, list_id: defaultList, title: item.title, notes: "", assignee_id: ME?.id || null,
+    due_date: null, due_time: null, priority: 0, labels: "[]", recurrence: null,
+    completed: 0, parent_id: null,
+  }, true);
+  pendingInboxId = inboxId;
+};
+
+window.dismissInboxItem = async function(inboxId) {
+  const item = inboxItems.find(i => i.id === inboxId);
+  if (!item) return;
+  if (!await hubConfirm({ message: "Dismiss this quick-add?", description: esc(item.title), confirmLabel: "Dismiss", destructive: true })) return;
+  inboxItems = inboxItems.filter(i => i.id !== inboxId);
+  render();
+  await dbRun("DELETE FROM app_tasks__inbox WHERE id=?", [inboxId]);
+  showToast("Dismissed");
 };
 
 window.openTask = function(id) {
@@ -885,6 +952,7 @@ window.openTask = function(id) {
 window.closeModal = function() {
   document.getElementById("task-modal").style.display = "none";
   modalTask = null;
+  pendingInboxId = null;
 };
 
 window.modalOverlayClick = function(e) {
@@ -988,6 +1056,7 @@ window.saveTask = async function() {
   };
 
   if (modalIsNew) {
+    const consumeInboxId = pendingInboxId;   // capture before closeModal() clears it
     const id = uid();
     const ts = now();
     localTasks.push({
@@ -1007,10 +1076,12 @@ window.saveTask = async function() {
       created_at: ts,
       updated_at: ts,
     });
+    if (consumeInboxId) inboxItems = inboxItems.filter(i => i.id !== consumeInboxId);
     closeModal();
     render();
     showToast("Task created");
     await createTask(fields, id, ts);
+    if (consumeInboxId) await dbRun("DELETE FROM app_tasks__inbox WHERE id=?", [consumeInboxId]);
   } else {
     const updateFields = { ...fields, labels: JSON.stringify(fields.labels), recurrence: fields.recurrence ? JSON.stringify(fields.recurrence) : null };
     const taskId = modalTask.id;
