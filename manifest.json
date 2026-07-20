@@ -1,7 +1,7 @@
 {
   "id": "tasks",
   "name": "Tasks",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Create tasks with due dates, priorities, labels, recurrence, and subtasks. Assign to family members. Also syncs with Google Tasks and Apple Reminders.",
   "entrypoint": "index.html",
   "runtime": "static",
@@ -53,6 +53,7 @@
     "attribution": { "id_column": "added_by_id", "name_column": "added_by_name" },
     "created_at_column": "created_at"
   },
+  "capture_consumer": { "kinds": ["task"], "via": "structured" },
   "agenda": {
     "kind": "task",
     "label": "Tasks",
