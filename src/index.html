@@ -264,18 +264,45 @@ let undoData = null;        // {task, action}
 // ── DB ────────────────────────────────────────────────────────────────────────
 async function dbRun(sql, params = []) {
   if (!DB) return { rows: [] };
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 15000);
   try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 15000);
     const res = await fetch(DB, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sql, params }),
       signal: ctrl.signal,
     });
+    const json = await res.json();
+    // The hub reports a refused write as a JSON body with an `error` key
+    // (403 row policy, 400 bad statement, 507 over quota). fetch() does not
+    // reject on those, so without this throw every caller's rollback and
+    // error toast below is unreachable code.
+    if (!res.ok || json.error) throw new Error(json.error || `Database request failed (${res.status})`);
+    return json;
+  } finally {
     clearTimeout(t);
-    return await res.json();
-  } catch { return { rows: [] }; }
+  }
+}
+
+/** Several statements as one transaction — all apply, or none does. */
+async function dbBatch(statements) {
+  if (!DB || statements.length === 0) return { results: [] };
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const res = await fetch(DB, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ statements }),
+      signal: ctrl.signal,
+    });
+    const json = await res.json();
+    if (!res.ok || json.error) throw new Error(json.error || `Database request failed (${res.status})`);
+    return json;
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 async function initDB() {
@@ -366,6 +393,14 @@ async function completeTask(id) {
   task.completed_at = completedAt;
   render();
 
+  // Completing a repeating task also creates its next occurrence. Undo has to
+  // remove that occurrence as well, otherwise every complete/undo cycle left
+  // another copy of the task behind — tap it five times and the list holds five
+  // identical future tasks with no indication where they came from. Captured in
+  // a holder because the toast (and its closure) is shown before the clone
+  // exists.
+  let recurrenceCloneId = null;
+
   showToast(
     newCompleted ? "Task completed" : "Marked incomplete",
     newCompleted ? "Undo" : null,
@@ -374,6 +409,13 @@ async function completeTask(id) {
       task.completed_at = origCompletedAt;
       render();
       await updateTask(id, { completed: wasCompleted ? 1 : 0, completed_at: origCompletedAt });
+      if (recurrenceCloneId) {
+        const cloneId = recurrenceCloneId;
+        recurrenceCloneId = null;
+        await deleteTask(cloneId);
+        await reloadLocal();
+        render();
+      }
     }
   );
 
@@ -386,7 +428,7 @@ async function completeTask(id) {
         const rule = JSON.parse(task.recurrence);
         const nextDate = nextDueDate(task.due_date, rule);
         if (nextDate) {
-          await createTask({
+          recurrenceCloneId = await createTask({
             list_id: task.list_id,
             title: task.title,
             notes: task.notes,
@@ -431,8 +473,14 @@ async function updateList(id, fields) {
 }
 
 async function deleteList(id) {
-  await dbRun("UPDATE app_tasks__tasks SET list_id=NULL WHERE list_id=?", [id]);
-  await dbRun("DELETE FROM app_tasks__lists WHERE id=?", [id]);
+  // One transaction: as two requests, a failure between them deleted the list
+  // while its tasks still pointed at it — and a task whose list_id names a row
+  // that no longer exists renders in no list at all, so it is invisible without
+  // being gone.
+  await dbBatch([
+    { sql: "UPDATE app_tasks__tasks SET list_id=NULL WHERE list_id=?", params: [id] },
+    { sql: "DELETE FROM app_tasks__lists WHERE id=?", params: [id] },
+  ]);
 }
 
 async function syncAll() {

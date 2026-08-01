@@ -39,6 +39,32 @@ describe("manifest.json", () => {
     expect(Array.isArray(manifest.data_access.writes)).toBe(true);
   });
 
+  // A private list is readable through the owner arm of owner_or_visibility and
+  // nothing else — this policy grants no adult tier, so once the owner is off
+  // the roster no member, adult or admin, has a path to the row. Clearing the
+  // owner (the previous "null") made that permanent: the list and every task in
+  // it stayed in the database, exported and billed, visible to nobody. Only the
+  // private rows are deleted; a `visibility = 'everyone'` list is shared work
+  // that must survive whoever created it, and it stays readable and writable by
+  // the household with a stale owner id, so it needs no action at all.
+  //
+  // No dependent_tables on purpose: the app already renders a task whose
+  // list_id names a row that no longer exists (src/index.html — the list tag is
+  // conditional on finding the list), so the tasks survive as unassigned rather
+  // than being destroyed along with a list they merely sat in.
+  it("deletes only the unreachable private lists on member removal", () => {
+    expect(manifest.member_references?.lists).toEqual({
+      column: "member_id",
+      on_removed: "delete",
+      only_when: { column: "visibility", values: ["private"] },
+    });
+  });
+
+  it("only ever writes the two list visibility values only_when relies on", () => {
+    const html = readFileSync(join(__dirname, "../src/index.html"), "utf-8");
+    expect(html).toMatch(/visibility\s*===?\s*"everyone"\s*\?\s*"everyone"\s*:\s*"private"/);
+  });
+
   it("enforces member ownership and keeps due dates queryable", () => {
     expect(manifest.row_policies?.lists).toEqual({
       kind: "owner_or_visibility",

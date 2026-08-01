@@ -42,6 +42,18 @@
       "member_column": "assignee_id"
     }
   },
+  "member_references": {
+    "tasks": [
+      { "column": "assignee_id", "on_removed": "null" },
+      { "column": "created_by", "on_removed": "keep" }
+    ],
+    "lists": {
+      "column": "member_id",
+      "on_removed": "delete",
+      "only_when": { "column": "visibility", "values": ["private"] }
+    },
+    "inbox": { "column": "added_by_id", "on_removed": "keep" }
+  },
   "nav": {
     "label": "Tasks"
   },
