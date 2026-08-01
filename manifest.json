@@ -54,6 +54,71 @@
     },
     "inbox": { "column": "added_by_id", "on_removed": "keep" }
   },
+  "automation_actions": {
+    "create_task": {
+      "title": "Add a task for a member",
+      "description": "Create a task on someone's list when another app's event fires — a reimbursement to settle, a care task to run, a borrowing request to answer.",
+      "params": {
+        "assignee_id": { "type": "member", "label": "Who it's for", "required": true },
+        "title": { "type": "text", "label": "Task title", "required": true },
+        "notes": { "type": "text", "label": "Notes", "default": "" },
+        "priority": { "type": "integer", "label": "Priority (0 low – 2 high)", "default": 0, "min": 0, "max": 2 }
+      },
+      "dedupe": { "table": "tasks", "column": "source_event_id" },
+      "steps": [
+        {
+          "op": "insert",
+          "table": "tasks",
+          "values": {
+            "id": "$uuid",
+            "title": ":title",
+            "notes": ":notes",
+            "assignee_id": ":assignee_id",
+            "priority": ":priority",
+            "created_by": "automation",
+            "created_at": "$now",
+            "updated_at": "$now",
+            "source_event_id": "$event_id"
+          }
+        }
+      ]
+    }
+  },
+  "suggested_automations": [
+    {
+      "title": "Turn an elder-care task into a task on the assignee's list",
+      "description": "When the elder-care app records a task for someone, add it to their own Tasks list so it shows up on Today alongside everything else they owe.",
+      "trigger_event": "elder_care.task_created",
+      "target_app_id": "tasks",
+      "action_id": "create_task",
+      "param_map": {
+        "assignee_id": { "kind": "payload_field", "value": "assignee_id" },
+        "title": { "kind": "payload_field", "value": "title" }
+      }
+    },
+    {
+      "title": "Add a task when someone asks to be reimbursed",
+      "description": "A reimbursement request in the expense splitter becomes a task for whoever owes the money, so it doesn't sit in a list nobody opens.",
+      "trigger_event": "expense.reimbursement_requested",
+      "target_app_id": "tasks",
+      "action_id": "create_task",
+      "param_map": {
+        "assignee_id": { "kind": "payload_field", "value": "payer_id" },
+        "title": { "kind": "const", "value": "Reimburse a shared expense" }
+      }
+    },
+    {
+      "title": "Add a task when someone asks to borrow your thing",
+      "description": "A borrowing request becomes a task for the lender, so a request nobody noticed doesn't quietly expire.",
+      "trigger_event": "borrowing.requested",
+      "target_app_id": "tasks",
+      "action_id": "create_task",
+      "param_map": {
+        "assignee_id": { "kind": "payload_field", "value": "lender_id" },
+        "title": { "kind": "const", "value": "Answer a borrowing request" }
+      }
+    }
+  ],
   "nav": {
     "label": "Tasks"
   },
