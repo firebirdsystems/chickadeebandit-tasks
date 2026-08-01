@@ -80,3 +80,13 @@ export function sortTasks(tasks) {
     return (b.priority || 0) - (a.priority || 0);
   });
 }
+
+/**
+ * Fields the in-app search matches against (see hub-sdk `searchMatch`).
+ * Notes and labels count as well as the title — a task is found again
+ * by the detail written into it ("the number for the plumber") or by a
+ * label, not only by the one line it was named.
+ */
+export function searchableFields(item) {
+  return [item.title, item.notes, item.labels];
+}

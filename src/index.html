@@ -192,6 +192,13 @@
     .login-notice { text-align: center; padding: 60px 20px; }
     .login-notice h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
     .login-notice p { color: var(--muted); font-size: 0.88rem; }
+    .search-row { margin-bottom: 12px; }
+    .search-input {
+      width: 100%; border: 1.5px solid var(--border-mid, var(--border, #d1d5db));
+      border-radius: 8px; padding: 9px 11px; font: inherit;
+      background: var(--surface, var(--card, #fff)); color: var(--text, inherit);
+    }
+    .search-input:focus { outline: none; border-color: var(--accent, #6366f1); }
   </style>
 </head>
 <body>
@@ -231,13 +238,13 @@
 </div>
 
 <script type="module">
-import { memberColor, initial, esc, isAdult, hubConfirm } from "/hub-sdk.js";
+import { memberColor, initial, esc, isAdult, hubConfirm, searchMatch } from "/hub-sdk.js";
 import {
   PRIORITY_COLORS, PRIORITY_LABELS, PRIORITY_CLASSES,
   DAYS, DAY_LABELS,
   todayStr, parseLabels,
   isOverdue, isToday, isTomorrow, isUpcoming, formatDue,
-  nextDueDate, sortTasks,
+  nextDueDate, sortTasks, searchableFields,
 } from "./logic.js";
 
 const CONTEXT = window.__CONTEXT_URL ?? "";
@@ -253,6 +260,7 @@ let localLists = [], localTasks = [], localSubtasks = [];
 let inboxItems = [];             // household-shared quick-add captures (from kiosk)
 let pendingInboxId = null;       // inbox row to consume when the next new-task save succeeds
 let activeTab = "mine";
+let searchQ = "";       // in-app search (see logic.js searchableFields)
 let mineFilter = "all";
 let activeListId = null;
 let modalTask = null;       // task being edited
@@ -552,6 +560,8 @@ function filterLocalTasks() {
     tasks = tasks.filter(t => !t.completed);
   }
 
+  if (searchQ) tasks = tasks.filter(t => searchMatch(searchQ, searchableFields(t)));
+
   return sortTasks(tasks);
 }
 
@@ -642,8 +652,8 @@ function renderMineTab() {
     </div>
     ${tasks.length === 0 ? `
       <div class="empty">
-        <h3>${mineFilter === "done" ? "No completed tasks" : "No tasks"}</h3>
-        <p>${mineFilter === "done" ? "Completed tasks will appear here." : "Use the quick add above or tap + New to create a task."}</p>
+        <h3>${searchQ ? "No matching tasks" : mineFilter === "done" ? "No completed tasks" : "No tasks"}</h3>
+        <p>${searchQ ? `Nothing matches "${esc(searchQ)}".` : mineFilter === "done" ? "Completed tasks will appear here." : "Use the quick add above or tap + New to create a task."}</p>
       </div>` :
       `<div class="task-group">${tasks.map(renderTaskRow).join("")}</div>`
     }`;
@@ -799,9 +809,19 @@ function render() {
       <button class="tab ${activeTab==='synced'?'active':''}"      onclick="setTab('synced')">Synced</button>
       <button class="tab ${activeTab==='connections'?'active':''}" onclick="setTab('connections')">Connections</button>
     </div>
-    ${(tabContent[activeTab] || tabContent.mine)()}
+    ${activeTab === "mine" || activeTab === "family" ? `<div class="search-row"><input id="search" class="search-input" type="search" placeholder="Search tasks…" aria-label="Search tasks" value="${esc(searchQ)}" /></div>` : ""}
+    <div id="tab-body">${(tabContent[activeTab] || tabContent.mine)()}</div>
   `;
 }
+
+// Re-render only the tab body on each keystroke so the search box keeps focus.
+document.addEventListener("input", (e) => {
+  if (e.target.id !== "search") return;
+  searchQ = e.target.value;
+  const el = document.getElementById("tab-body");
+  if (!el) return;
+  el.innerHTML = activeTab === "family" ? renderFamilyTab() : renderMineTab();
+});
 
 // ── Task Modal ─────────────────────────────────────────────────────────────────
 function buildModalForm(task, isNew) {

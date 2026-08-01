@@ -4,7 +4,7 @@ import {
   DAYS, DAY_LABELS,
   parseLabels,
   isOverdue, isToday, isTomorrow, isUpcoming, formatDue,
-  nextDueDate, sortTasks,
+  nextDueDate, sortTasks, searchableFields,
 } from "../src/logic.js";
 
 const TODAY = "2025-06-15"; // Sunday
@@ -239,5 +239,13 @@ describe("sortTasks", () => {
     const copy = [...tasks];
     sortTasks(tasks);
     expect(tasks).toEqual(copy);
+  });
+});
+
+describe("searchableFields", () => {
+  it("matches on notes and labels, not just the task title", () => {
+    const fields = searchableFields({ title: "Call back", notes: "plumber, 07700 900123", labels: "house,urgent" });
+    expect(fields).toContain("plumber, 07700 900123");
+    expect(fields).toContain("house,urgent");
   });
 });
