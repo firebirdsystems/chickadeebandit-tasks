@@ -140,6 +140,18 @@
       "query": "SELECT id AS id, title AS title, CASE WHEN due_time IS NULL OR due_time = '' THEN due_date ELSE due_date || 'T' || due_time END AS when_at, (completed = 1) AS done, NULLIF(notes, '') AS subtitle, NULLIF(assignee_id, '') AS member_id FROM app_tasks__tasks WHERE due_date = :today AND parent_id IS NULL ORDER BY completed, priority DESC, due_time LIMIT 20"
     }
   },
+  "glance": {
+    "source": {
+      "kind": "sql",
+      "query": "SELECT COUNT(*) AS n FROM app_tasks__tasks WHERE due_date = :today AND completed = 0 AND parent_id IS NULL LIMIT 1"
+    },
+    "display": {
+      "template": "badge",
+      "count": "n",
+      "label": "tasks due today",
+      "severity": "info"
+    }
+  },
   "widget": {
     "label": "Tasks",
     "size": "small"
