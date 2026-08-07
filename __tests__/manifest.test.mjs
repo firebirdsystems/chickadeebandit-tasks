@@ -76,6 +76,11 @@ describe("manifest.json", () => {
     expect(manifest.row_policies?.tasks).toEqual({
       kind: "owner_only",
       member_column: "assignee_id",
+      retain_days: {
+        default: 365,
+        timestamp_column: "completed_at",
+        override_key: "completed_tasks",
+      },
     });
     expect(manifest.db_plaintext_columns).toContain("due_date");
   });
@@ -398,5 +403,42 @@ describe.skipIf(!manifest.automation_actions)("automation_actions match the migr
         expect(s.param_map?.[name], `"${s.title}" does not map required param "${name}"`).toBeTruthy();
       }
     }
+  });
+});
+
+// ── retention ────────────────────────────────────────────────────────────────
+//
+// The hub refuses a `retain_days` declaration whose timestamp column has no
+// index LEADING with it, and it refuses one whose columns are missing from the
+// migrations. Both failures land at install/publish time rather than in review,
+// so they are asserted here.
+
+describe("retain_days matches the migrations", () => {
+  const retain = manifest.row_policies.tasks.retain_days;
+  const schema = migrationSchema();
+  const rawSql = readdirSync(join(__dirname, "../migrations"))
+    .filter((f) => f.endsWith(".sql"))
+    .sort()
+    .map((f) => readFileSync(join(__dirname, "../migrations", f), "utf-8"))
+    .join("\n")
+    .replace(/--[^\n]*/g, "");
+
+  it("prunes on a column the table actually has", () => {
+    expect(schema[`${AUTOMATION_PREFIX}tasks`][retain.timestamp_column]).toBeTruthy();
+  });
+
+  it("has an index beginning with the timestamp column", () => {
+    const re = new RegExp(
+      `create\\s+(?:unique\\s+)?index[\\s\\S]*?on\\s+${AUTOMATION_PREFIX}tasks\\s*\\(\\s*${retain.timestamp_column}`,
+      "i",
+    );
+    expect(re.test(rawSql)).toBe(true);
+  });
+
+  it("prunes on completion, not creation — an open task has no completed_at", () => {
+    // `WHERE completed_at < ?` never matches NULL, which is what keeps the
+    // sweep off tasks that were never finished, however old they are.
+    expect(retain.timestamp_column).toBe("completed_at");
+    expect(schema[`${AUTOMATION_PREFIX}tasks`].completed_at.notNull).toBe(false);
   });
 });

@@ -635,6 +635,9 @@ function renderMineTab() {
       ${["all","today","upcoming","overdue","done"].map(f =>
         `<button class="chip ${mineFilter===f?'active':''}" onclick="setMineFilter('${f}')">${f[0].toUpperCase()+f.slice(1)}</button>`
       ).join("")}
+      ${mineFilter === "done" && tasks.length > 0
+        ? `<button class="btn-sm" style="margin-left:auto" onclick="clearCompleted()">Clear completed</button>`
+        : ""}
     </div>
     ${visibleLists.length > 0 ? `
     <div class="lists-row">
@@ -1170,6 +1173,57 @@ window.confirmDeleteTask = async function(id) {
     render();
     showToast("Task deleted");
   });
+};
+
+/** Bulk-delete the completed tasks the Done filter is currently showing.
+ *
+ * Scoped to the visible set (the active list and the search box still apply)
+ * rather than "every completed row": a button that silently reaches past what
+ * the member can see is how a filtered view turns into unintended data loss.
+ * Deliberately permanent and without an Undo toast — there is no archive to
+ * restore from, so the confirm dialog is the only gate and it says so. */
+window.clearCompleted = async function() {
+  const doomed = filterLocalTasks().filter(t => !!t.completed);
+  if (doomed.length === 0) return;
+  const n = doomed.length;
+  if (!await hubConfirm({
+    message: `Clear ${n} completed task${n === 1 ? "" : "s"}?`,
+    description: "They are permanently deleted, along with their subtasks. This cannot be undone.",
+    confirmLabel: "Clear",
+    destructive: true,
+  })) return;
+
+  // The hub caps a batch at 25 statements and a statement at 100 bound params,
+  // so the ids are chunked: 50 per statement, two statements per chunk with the
+  // subtasks deleted BEFORE their parents. Slicing at 24 keeps every such pair
+  // inside one transaction — split across two requests, a failure between them
+  // would leave subtasks pointing at a parent that no longer exists, which the
+  // UI renders nowhere at all.
+  const ids = doomed.map(t => t.id);
+  const statements = [];
+  for (let i = 0; i < ids.length; i += 50) {
+    const chunk = ids.slice(i, i + 50);
+    const marks = chunk.map(() => "?").join(",");
+    statements.push({ sql: `DELETE FROM app_tasks__tasks WHERE parent_id IN (${marks})`, params: chunk });
+    statements.push({ sql: `DELETE FROM app_tasks__tasks WHERE id IN (${marks})`, params: chunk });
+  }
+
+  try {
+    for (let i = 0; i < statements.length; i += 24) {
+      await dbBatch(statements.slice(i, i + 24));
+    }
+  } catch {
+    // Earlier chunks may already have committed, so reload rather than assume
+    // the list is unchanged.
+    await reloadLocal();
+    render();
+    showToast("Couldn't clear completed tasks");
+    return;
+  }
+
+  await reloadLocal();
+  render();
+  showToast(`Cleared ${n} task${n === 1 ? "" : "s"}`);
 };
 
 window.duplicateTask = async function(id) {
