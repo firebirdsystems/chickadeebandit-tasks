@@ -43,7 +43,8 @@
       "retain_days": {
         "default": 365,
         "timestamp_column": "completed_at",
-        "override_key": "completed_tasks"
+        "override_key": "completed_tasks",
+        "tier": "operational"
       }
     }
   },

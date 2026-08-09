@@ -80,6 +80,10 @@ describe("manifest.json", () => {
         default: 365,
         timestamp_column: "completed_at",
         override_key: "completed_tasks",
+        // A completed task is tidy-up, not a family record, so a record-mode
+        // space (co-parenting) leaves this window alone instead of applying its
+        // seven-year evidentiary floor.
+        tier: "operational",
       },
     });
     expect(manifest.db_plaintext_columns).toContain("due_date");
