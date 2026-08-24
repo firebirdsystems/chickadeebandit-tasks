@@ -251,6 +251,7 @@ const CONTEXT = window.__CONTEXT_URL ?? "";
 const DB      = window.__DB_URL ?? "";
 const ME      = window.__CURRENT_MEMBER ?? null;
 const APP_ID  = window.__APP_ID ?? "tasks";
+const EVENTS_URL = window.__EVENTS_URL ?? "/api/events";
 
 const LIST_COLORS = ["#4f46e5","#0891b2","#16a34a","#d97706","#dc2626","#7c3aed"];
 
@@ -291,6 +292,21 @@ async function dbRun(sql, params = []) {
   } finally {
     clearTimeout(t);
   }
+}
+
+/**
+ * Fire-and-forget publish. Payloads carry ids and dates only — never the task
+ * title or notes. Tasks are `owner_only` on assignee_id, so their text is
+ * visible to one member, while the event bus is household-wide: a title in the
+ * payload would leak a private list to every alert and automation.
+ */
+async function publishEvent(type, subjectId, payload = {}) {
+  if (!EVENTS_URL) return;
+  await fetch(EVENTS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type, subject_id: subjectId, payload }),
+  }).catch(() => {});
 }
 
 /** Several statements as one transaction — all apply, or none does. */
@@ -375,6 +391,13 @@ async function createTask(fields, id = uid(), ts = now()) {
      fields.recurrence ? JSON.stringify(fields.recurrence) : null,
      fields.parent_id||null, ME?.id||null, ts, ts]
   );
+  await publishEvent("task.created", id, {
+    task_id: id,
+    assignee_id: fields.assignee_id || undefined,
+    list_id: fields.list_id || undefined,
+    due_date: fields.due_date || undefined,
+    created_by: ME?.id || undefined,
+  });
   return id;
 }
 
@@ -429,6 +452,21 @@ async function completeTask(id) {
 
   try {
     await updateTask(id, { completed: newCompleted, completed_at: completedAt });
+
+    // Only completion is announced. Un-completing publishes nothing: there is
+    // no retraction on the bus, so a consumer that awarded points for the
+    // completion cannot be told to take them back, and an "uncompleted" event
+    // no consumer handles is worse than silence.
+    if (newCompleted) {
+      await publishEvent("task.completed", id, {
+        task_id: id,
+        assignee_id: task.assignee_id || undefined,
+        completed_by: ME?.id || undefined,
+        list_id: task.list_id || undefined,
+        due_date: task.due_date || undefined,
+        completed_at: completedAt || undefined,
+      });
+    }
 
     // Handle recurrence: when marking complete, clone with next due date
     if (newCompleted && task.recurrence && task.due_date) {

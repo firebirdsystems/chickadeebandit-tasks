@@ -1,7 +1,7 @@
 {
   "id": "tasks",
   "name": "Tasks",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Create tasks with due dates, priorities, labels, recurrence, and subtasks. Assign to family members. Also syncs with Google Tasks and Apple Reminders.",
   "entrypoint": "index.html",
   "runtime": "static",
@@ -123,8 +123,33 @@
         "assignee_id": { "kind": "payload_field", "value": "lender_id" },
         "title": { "kind": "const", "value": "Answer a borrowing request" }
       }
+    },
+    {
+      "title": "Add a task when a maintenance request is filed",
+      "description": "A filed maintenance request becomes a task for whoever fixes things, so it doesn't sit in a queue nobody opens. It starts assigned to whoever filed it — change the assignee to your household’s fixer if that is someone else.",
+      "trigger_event": "maintenance_request.filed",
+      "target_app_id": "tasks",
+      "action_id": "create_task",
+      "param_map": {
+        "assignee_id": { "kind": "payload_field", "value": "submitted_by" },
+        "title": { "kind": "payload_field", "value": "title" },
+        "notes": { "kind": "payload_field", "value": "location" }
+      }
+    },
+    {
+      "title": "Add a follow-up task when a dose is missed",
+      "description": "When a scheduled dose is still unlogged after its grace window, a follow-up task appears. It starts assigned to the person the medication belongs to — change the assignee to a caregiver if someone else should check in. The event carries no medication name, so neither does the task.",
+      "trigger_event": "medication.dose_missed",
+      "target_app_id": "tasks",
+      "action_id": "create_task",
+      "param_map": {
+        "assignee_id": { "kind": "payload_field", "value": "member_id" },
+        "title": { "kind": "const", "value": "Check on a missed medication dose" },
+        "priority": { "kind": "const", "value": 2 }
+      }
     }
   ],
+  "publishes": ["task.created", "task.completed"],
   "nav": {
     "label": "Tasks"
   },
