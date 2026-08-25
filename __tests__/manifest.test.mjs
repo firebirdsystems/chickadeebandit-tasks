@@ -473,3 +473,36 @@ describe("manifest.preload mirrors the app's first-render reads", () => {
     }
   });
 });
+
+// The module script is one scope: a second top-level `function dbBatch` is a
+// SyntaxError that blanks the app at load, and nothing in this suite executes
+// the HTML. Parse it the way the browser will, and refuse duplicate top-level
+// declarations explicitly (a lexical duplicate is the exact 1.5.1 regression).
+describe("src/index.html module script", () => {
+  const html = readFileSync(join(__dirname, "../src/index.html"), "utf-8");
+  const scripts = [...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+
+  it("has exactly one inline module script", () => expect(scripts.length).toBe(1));
+
+  it("declares each top-level function and const once", () => {
+    const names = [...scripts[0].matchAll(/^(?:async\s+)?function\s+([A-Za-z_$][\w$]*)|^(?:const|let|var)\s+([A-Za-z_$][\w$]*)/gm)]
+      .map((m) => m[1] ?? m[2]);
+    const seen = new Set();
+    const dupes = names.filter((n) => (seen.has(n) ? true : (seen.add(n), false)));
+    expect(dupes).toEqual([]);
+  });
+
+  it("parses as an ES module", async () => {
+    const { mkdtempSync, writeFileSync, rmSync } = await import("fs");
+    const { tmpdir } = await import("os");
+    const { execFileSync } = await import("child_process");
+    const dir = mkdtempSync(join(tmpdir(), "tasks-module-"));
+    const file = join(dir, "index.mjs");
+    writeFileSync(file, scripts[0]);
+    try {
+      execFileSync(process.execPath, ["--check", file], { stdio: "pipe" });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
