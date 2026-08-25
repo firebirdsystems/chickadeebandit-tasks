@@ -271,15 +271,14 @@ let toastTimer = null;
 let undoData = null;        // {task, action}
 
 // ── DB ────────────────────────────────────────────────────────────────────────
-async function dbRun(sql, params = []) {
-  if (!DB) return { rows: [] };
+async function dbPost(body) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 15000);
   try {
     const res = await fetch(DB, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sql, params }),
+      body: JSON.stringify(body),
       signal: ctrl.signal,
     });
     const json = await res.json();
@@ -292,6 +291,38 @@ async function dbRun(sql, params = []) {
   } finally {
     clearTimeout(t);
   }
+}
+async function dbRun(sql, params = []) {
+  if (!DB) return { rows: [] };
+  return dbPost({ sql, params });
+}
+/** One request, one D1 transaction, results in statement order. */
+async function dbBatch(statements) {
+  if (!DB) return statements.map(() => ({ rows: [], changed: 0 }));
+  const json = await dbPost({ statements: statements.map(({ sql, params = [] }) => ({ sql, params })) });
+  return json.results;
+}
+
+/**
+ * The reads every render starts from. Declared ONCE here and mirrored
+ * verbatim by `manifest.preload`: the hub runs these while rendering the
+ * document, embeds the rows as `window.__PRELOAD`, and answers the batch
+ * below from the embedded copy — so the first paint costs no round trip. The
+ * two copies must stay byte-identical (__tests__/manifest.test.mjs checks);
+ * when the preload is absent (kiosk, oversized rows) the batch simply goes to
+ * the network as one request.
+ */
+const LOCAL_READS = {
+  "lists": "SELECT * FROM app_tasks__lists ORDER BY sort_order, created_at",
+  "tasks": "SELECT * FROM app_tasks__tasks WHERE parent_id IS NULL ORDER BY due_date, priority DESC, created_at",
+  "subtasks": "SELECT * FROM app_tasks__tasks WHERE parent_id IS NOT NULL ORDER BY created_at",
+  "inbox": "SELECT * FROM app_tasks__inbox ORDER BY created_at DESC, title"
+};
+async function readLocal() {
+  const [listsRes, localRes, subRes, inboxRes] = await dbBatch(
+    Object.values(LOCAL_READS).map((sql) => ({ sql })),
+  );
+  return { listsRes, localRes, subRes, inboxRes };
 }
 
 /**
@@ -346,14 +377,11 @@ function safeListColor(value) { return LIST_COLORS.includes(value) ? value : LIS
 // ── Load data ─────────────────────────────────────────────────────────────────
 async function load() {
   await initDB();
-  const [ctxRes, tasksRes, connRes, listsRes, localRes, subRes, inboxRes] = await Promise.all([
+  const [ctxRes, tasksRes, connRes, { listsRes, localRes, subRes, inboxRes }] = await Promise.all([
     fetch(`${CONTEXT}?keys=family.members`).then(r => r.json()).catch(() => ({ "family.members": [] })),
     fetch(`/api/tasks${ME?.id ? `?memberId=${encodeURIComponent(ME.id)}` : ""}`).then(r => r.json()).catch(() => []),
     fetch("/api/tasks/connections").then(r => r.json()).catch(() => []),
-    dbRun("SELECT * FROM app_tasks__lists ORDER BY sort_order, created_at"),
-    dbRun("SELECT * FROM app_tasks__tasks WHERE parent_id IS NULL ORDER BY due_date, priority DESC, created_at"),
-    dbRun("SELECT * FROM app_tasks__tasks WHERE parent_id IS NOT NULL ORDER BY created_at"),
-    dbRun("SELECT * FROM app_tasks__inbox ORDER BY created_at DESC, title"),
+    readLocal(),
   ]);
   members     = ctxRes["family.members"] ?? [];
   syncedTasks = Array.isArray(tasksRes) ? tasksRes : [];
@@ -368,12 +396,7 @@ async function load() {
 }
 
 async function reloadLocal() {
-  const [listsRes, localRes, subRes, inboxRes] = await Promise.all([
-    dbRun("SELECT * FROM app_tasks__lists ORDER BY sort_order, created_at"),
-    dbRun("SELECT * FROM app_tasks__tasks WHERE parent_id IS NULL ORDER BY due_date, priority DESC, created_at"),
-    dbRun("SELECT * FROM app_tasks__tasks WHERE parent_id IS NOT NULL ORDER BY created_at"),
-    dbRun("SELECT * FROM app_tasks__inbox ORDER BY created_at DESC, title"),
-  ]);
+  const { listsRes, localRes, subRes, inboxRes } = await readLocal();
   localLists    = listsRes.rows ?? [];
   localTasks    = localRes.rows ?? [];
   localSubtasks = subRes.rows ?? [];

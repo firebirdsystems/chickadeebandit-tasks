@@ -446,3 +446,30 @@ describe("retain_days matches the migrations", () => {
     expect(schema[`${AUTOMATION_PREFIX}tasks`].completed_at.notNull).toBe(false);
   });
 });
+
+// The hub answers the first-render batch from `window.__PRELOAD` only when the
+// statement text it embedded is equal (whitespace-collapsed) to what the app
+// posts. A drifted copy is not an error anywhere — it is just a preload that
+// silently stops answering — so the single source is LOCAL_READS in the app
+// and the manifest is checked against it here.
+describe("manifest.preload mirrors the app's first-render reads", () => {
+  const html = readFileSync(join(__dirname, "../src/index.html"), "utf-8");
+  const block = html.match(/const LOCAL_READS = (\{[\s\S]*?\n\});/);
+  const localReads = JSON.parse(block[1]);
+
+  it("declares exactly the statements the app batches at load, in order", () => {
+    expect(Object.keys(manifest.preload)).toEqual(Object.keys(localReads));
+    for (const [name, sql] of Object.entries(localReads)) {
+      expect(manifest.preload[name]).toEqual({ sql });
+    }
+  });
+
+  it("stays within the hub's caps and reads only this app's tables", () => {
+    expect(Object.keys(manifest.preload).length).toBeLessThanOrEqual(6);
+    for (const { sql } of Object.values(manifest.preload)) {
+      expect(sql).toMatch(/^SELECT /);
+      expect(sql).not.toMatch(/;|--/);
+      for (const table of sql.match(/FROM\s+(\w+)/g) ?? []) expect(table).toMatch(/FROM\s+app_tasks__/);
+    }
+  });
+});

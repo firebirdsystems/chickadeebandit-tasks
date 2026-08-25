@@ -1,7 +1,7 @@
 {
   "id": "tasks",
   "name": "Tasks",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Create tasks with due dates, priorities, labels, recurrence, and subtasks. Assign to family members. Also syncs with Google Tasks and Apple Reminders.",
   "entrypoint": "index.html",
   "runtime": "static",
@@ -29,6 +29,12 @@
   "storage": "db",
   "db_encryption": "off",
   "db_plaintext_columns": ["due_date"],
+  "preload": {
+    "lists": { "sql": "SELECT * FROM app_tasks__lists ORDER BY sort_order, created_at" },
+    "tasks": { "sql": "SELECT * FROM app_tasks__tasks WHERE parent_id IS NULL ORDER BY due_date, priority DESC, created_at" },
+    "subtasks": { "sql": "SELECT * FROM app_tasks__tasks WHERE parent_id IS NOT NULL ORDER BY created_at" },
+    "inbox": { "sql": "SELECT * FROM app_tasks__inbox ORDER BY created_at DESC, title" }
+  },
   "row_policies": {
     "lists": {
       "kind": "owner_or_visibility",
