@@ -238,7 +238,7 @@
 </div>
 
 <script type="module">
-import { memberColor, initial, esc, isAdult, hubConfirm, searchMatch } from "/hub-sdk.js";
+import { memberColor, initial, esc, isAdult, hubConfirm, searchMatch, hubToday } from "/hub-sdk.js";
 import {
   PRIORITY_COLORS, PRIORITY_LABELS, PRIORITY_CLASSES,
   DAYS, DAY_LABELS,
@@ -588,9 +588,9 @@ function filterLocalTasks() {
     // My tasks: I'm assignee or creator
     if (meId) tasks = tasks.filter(t => t.assignee_id === meId || (!t.assignee_id && t.created_by === meId) || (!t.assignee_id && !t.created_by));
     if (activeListId) tasks = tasks.filter(t => t.list_id === activeListId);
-    if (mineFilter === "today")    tasks = tasks.filter(t => !t.completed && (isToday(t) || isOverdue(t)));
-    else if (mineFilter === "upcoming") tasks = tasks.filter(t => !t.completed && isUpcoming(t));
-    else if (mineFilter === "overdue")  tasks = tasks.filter(t => !t.completed && isOverdue(t));
+    if (mineFilter === "today")    tasks = tasks.filter(t => !t.completed && (isToday(t, hubToday()) || isOverdue(t, hubToday())));
+    else if (mineFilter === "upcoming") tasks = tasks.filter(t => !t.completed && isUpcoming(t, hubToday()));
+    else if (mineFilter === "overdue")  tasks = tasks.filter(t => !t.completed && isOverdue(t, hubToday()));
     else if (mineFilter === "done")     tasks = tasks.filter(t => !!t.completed);
     else tasks = tasks.filter(t => !t.completed); // "all" = incomplete
   } else if (activeTab === "family") {
@@ -613,12 +613,12 @@ function renderPriorityBar(p) {
 }
 
 function renderTaskRow(t) {
-  const due = formatDue(t);
+  const due = formatDue(t, hubToday());
   const labels = parseLabels(t.labels);
   const subs = localSubtasks.filter(s => s.parent_id === t.id);
   const subsTotal = subs.length, subsDone = subs.filter(s => s.completed).length;
   const assignee = memberById(t.assignee_id);
-  const overdue = isOverdue(t);
+  const overdue = isOverdue(t, hubToday());
 
   return `
     <div class="task-row ${t.completed ? 'done-row' : ''}" onclick="openTask(${jsArg(t.id)})">
