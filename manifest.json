@@ -153,6 +153,18 @@
         "title": { "kind": "const", "value": "Check on a missed medication dose" },
         "priority": { "kind": "const", "value": 2 }
       }
+    },
+    {
+      "title": "Put project to-dos on the assignee's task list",
+      "description": "When a project item is assigned to someone, add it to their Tasks list so it shows up on Today.",
+      "trigger_event": "project.task_assigned",
+      "target_app_id": "tasks",
+      "action_id": "create_task",
+      "param_map": {
+        "assignee_id": { "kind": "payload_field", "value": "assignee_id" },
+        "title": { "kind": "payload_field", "value": "title" },
+        "notes": { "kind": "payload_field", "value": "project_name" }
+      }
     }
   ],
   "publishes": ["task.created", "task.completed"],
