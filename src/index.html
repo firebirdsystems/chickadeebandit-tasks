@@ -81,7 +81,11 @@
     .inbox-title { font-size: 0.9rem; font-weight: 500; color: var(--text); word-break: break-word; }
     .inbox-meta { font-size: 0.74rem; color: var(--muted); margin-top: 2px; }
     .inbox-actions { display: flex; gap: 6px; flex-shrink: 0; }
-    .inbox-actions .btn-sm.btn-primary { color: #fff; border: none; }
+    /* .btn-sm is declared after .btn-primary at equal specificity, so its white
+       background wins and the primary button's white text vanishes until :hover
+       repaints it. Restate the accent background here, not just the text. */
+    .inbox-actions .btn-sm.btn-primary { background: var(--accent); color: #fff; border: none; }
+    .inbox-actions .btn-sm.btn-primary:hover { background: var(--accent-hover); }
 
     /* Task row */
     .task-row { display: flex; align-items: flex-start; gap: 0; padding: 0; border-bottom: 1px solid var(--border); cursor: pointer; background: var(--card); transition: background .1s; }
