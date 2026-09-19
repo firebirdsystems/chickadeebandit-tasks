@@ -10,8 +10,8 @@
     body {
       font-family: var(--hub-font, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
       font-size: 13px;
-      background: #fff;
-      color: #111827;
+      background: var(--hub-surface, #fff);
+      color: var(--hub-text, #111827);
       height: 100vh;
       overflow: hidden;
       display: flex;
@@ -26,8 +26,8 @@
       border-bottom: 1px solid #e5e7eb;
       flex-shrink: 0;
     }
-    .header-title { font-size: 13px; font-weight: 700; color: #111827; }
-    .header-count { font-size: 11px; color: #6b7280; }
+    .header-title { font-size: 13px; font-weight: 700; color: var(--hub-text, #111827); }
+    .header-count { font-size: 11px; color: var(--hub-text-muted, #6b7280); }
 
     .task-list {
       flex: 1;
@@ -45,7 +45,7 @@
       border-bottom: 1px solid #f3f4f6;
     }
     .task-row:last-child { border-bottom: none; }
-    .task-row:hover { background: #f9fafb; }
+    .task-row:hover { background: var(--hub-bg, #f9fafb); }
     .task-row.done { opacity: .55; }
 
     .check {
@@ -84,8 +84,8 @@
       border-radius: 8px;
       flex-shrink: 0;
     }
-    .due-badge.overdue { background: #fee2e2; color: #dc2626; }
-    .due-badge.today   { background: #dbeafe; color: #1d4ed8; }
+    .due-badge.overdue { background: var(--hub-tint-danger, #fee2e2); color: var(--hub-tint-danger-fg, #dc2626); }
+    .due-badge.today   { background: var(--hub-tint-info, #dbeafe); color: var(--hub-tint-info-fg, #1d4ed8); }
 
     .footer {
       padding: 7px 14px;
@@ -94,14 +94,14 @@
       align-items: center;
       justify-content: space-between;
       flex-shrink: 0;
-      background: #f9fafb;
+      background: var(--hub-bg, #f9fafb);
     }
-    .footer-status { font-size: 11px; color: #6b7280; }
-    .footer-status strong { color: #111827; }
+    .footer-status { font-size: 11px; color: var(--hub-text-muted, #6b7280); }
+    .footer-status strong { color: var(--hub-text, #111827); }
     .open-link {
       font-size: 11px;
       font-weight: 600;
-      color: #111827;
+      color: var(--hub-text, #111827);
       text-decoration: none;
     }
     .open-link:hover { text-decoration: underline; }

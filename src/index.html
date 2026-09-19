@@ -17,8 +17,8 @@
       --accent:       var(--hub-primary, #111827);
       --accent-fg:    var(--hub-primary-fg, #ffffff);
       --accent-hover: var(--hub-primary-hover, #374151);
-      --accent-light: #f3f4f6;
-      --green: #16a34a; --amber: #d97706; --red: #dc2626;
+      --accent-light: var(--bg);
+      --green: #16a34a; --amber: #d97706; --red: var(--hub-tint-danger-fg, #dc2626);
       --radius:       var(--hub-radius, 0.5rem);
       --shadow:       0 1px 3px rgba(0,0,0,.07);
     }
@@ -29,15 +29,15 @@
     .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
     .header h1 { font-size: 1.5rem; font-weight: 700; }
     .header-actions { display: flex; gap: 8px; }
-    .btn-primary { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: var(--accent); color: var(--accent-fg); border: none; border-radius: 8px; padding: 8px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
     .btn-primary:hover { background: var(--accent-hover); }
     .btn-primary:disabled { opacity: .5; cursor: default; }
-    .btn-ghost { background: #fff; color: var(--muted); border: 1.5px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+    .btn-ghost { background: var(--card); color: var(--muted); border: 1.5px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
     .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-    .btn-sm { padding: 5px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); background: #fff; color: var(--muted); }
+    .btn-sm { padding: 5px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); background: var(--card); color: var(--muted); }
     .btn-sm:hover { border-color: var(--accent); color: var(--text); }
     .btn-sm:disabled { opacity: .5; cursor: default; }
-    .btn-danger { background: #fee2e2; color: var(--red); border: none; border-radius: 6px; padding: 7px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+    .btn-danger { background: var(--hub-tint-danger, #fee2e2); color: var(--red); border: none; border-radius: 6px; padding: 7px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
     .btn-danger:hover { background: #fecaca; }
 
     /* Tabs */
@@ -47,7 +47,7 @@
 
     /* Filter chips */
     .filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-    .chip { padding: 5px 13px; border-radius: 20px; border: 1.5px solid var(--border); background: #fff; font-size: 0.8rem; font-weight: 500; cursor: pointer; color: var(--muted); }
+    .chip { padding: 5px 13px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--card); font-size: 0.8rem; font-weight: 500; cursor: pointer; color: var(--muted); }
     .chip.active { border-color: var(--accent); background: var(--accent-light); color: var(--accent); font-weight: 600; }
     .chip:hover:not(.active) { border-color: #c7d2fe; }
 
@@ -59,7 +59,7 @@
 
     /* List sidebar area */
     .lists-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
-    .list-pill { padding: 4px 12px; border-radius: 16px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1.5px solid transparent; background: #f3f4f6; color: var(--muted); }
+    .list-pill { padding: 4px 12px; border-radius: 16px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1.5px solid transparent; background: var(--bg); color: var(--muted); }
     .list-pill.active { color: #fff; }
     .list-pill:hover:not(.active) { border-color: var(--border); background: #e5e7eb; }
     .list-pill-add { padding: 4px 10px; border-radius: 16px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1.5px dashed var(--border); background: transparent; color: var(--muted); }
@@ -67,7 +67,7 @@
 
     /* Task group */
     .task-group { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; background: var(--card); box-shadow: var(--shadow); }
-    .task-group-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #f9fafb; border-bottom: 1px solid var(--border); }
+    .task-group-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--bg); border-bottom: 1px solid var(--border); }
     .task-group-header .member { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.88rem; }
     .task-count { font-size: 0.76rem; color: var(--muted); }
 
@@ -84,13 +84,13 @@
     /* .btn-sm is declared after .btn-primary at equal specificity, so its white
        background wins and the primary button's white text vanishes until :hover
        repaints it. Restate the accent background here, not just the text. */
-    .inbox-actions .btn-sm.btn-primary { background: var(--accent); color: #fff; border: none; }
+    .inbox-actions .btn-sm.btn-primary { background: var(--accent); color: var(--accent-fg); border: none; }
     .inbox-actions .btn-sm.btn-primary:hover { background: var(--accent-hover); }
 
     /* Task row */
     .task-row { display: flex; align-items: flex-start; gap: 0; padding: 0; border-bottom: 1px solid var(--border); cursor: pointer; background: var(--card); transition: background .1s; }
     .task-row:last-child { border-bottom: none; }
-    .task-row:hover { background: #fafafa; }
+    .task-row:hover { background: var(--bg); }
     .task-row.done-row { opacity: .65; }
     .priority-bar { width: 4px; flex-shrink: 0; align-self: stretch; border-radius: 0; }
     .task-row-inner { display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px; flex: 1; min-width: 0; }
@@ -103,12 +103,12 @@
     .task-title.done { text-decoration: line-through; color: var(--muted); }
     .task-sub { font-size: 0.75rem; color: var(--muted); margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .task-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-top: 2px; }
-    .due-badge { font-size: 0.72rem; font-weight: 600; padding: 2px 7px; border-radius: 10px; background: #f3f4f6; color: var(--muted); white-space: nowrap; }
-    .due-badge.today { background: #dbeafe; color: #1d4ed8; }
-    .due-badge.overdue { background: #fee2e2; color: var(--red); }
-    .due-badge.tomorrow { background: #dcfce7; color: #15803d; }
+    .due-badge { font-size: 0.72rem; font-weight: 600; padding: 2px 7px; border-radius: 10px; background: var(--bg); color: var(--muted); white-space: nowrap; }
+    .due-badge.today { background: var(--hub-tint-info, #dbeafe); color: var(--hub-tint-info-fg, #1d4ed8); }
+    .due-badge.overdue { background: var(--hub-tint-danger, #fee2e2); color: var(--red); }
+    .due-badge.tomorrow { background: var(--hub-tint-success, #dcfce7); color: var(--hub-tint-success-fg, #15803d); }
     .avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: #fff; flex-shrink: 0; }
-    .tag { font-size: 0.68rem; padding: 1px 6px; border-radius: 8px; background: #f3f4f6; color: var(--muted); }
+    .tag { font-size: 0.68rem; padding: 1px 6px; border-radius: 8px; background: var(--bg); color: var(--muted); }
     .subtask-count { font-size: 0.72rem; color: var(--muted); display: flex; align-items: center; gap: 3px; }
 
     /* Avatar large */
@@ -125,7 +125,7 @@
     .conn-info .name { font-weight: 500; font-size: 0.9rem; }
     .conn-info .meta { font-size: 0.78rem; color: var(--muted); margin-top: 3px; display: flex; align-items: center; gap: 6px; }
     .conn-actions { display: flex; gap: 6px; flex-shrink: 0; }
-    .provider-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.73rem; padding: 2px 8px; border-radius: 12px; background: #f3f4f6; color: var(--muted); }
+    .provider-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.73rem; padding: 2px 8px; border-radius: 12px; background: var(--bg); color: var(--muted); }
 
     /* Modal overlay */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
@@ -135,7 +135,7 @@
     .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 14px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--card); z-index: 1; }
     .modal-title { font-size: 1rem; font-weight: 700; }
     .modal-close { font-size: 1.3rem; background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px 8px; border-radius: 6px; line-height: 1; }
-    .modal-close:hover { background: #f3f4f6; }
+    .modal-close:hover { background: var(--bg); }
     .modal-body { padding: 20px; }
     .modal-footer { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-top: 1px solid var(--border); gap: 8px; }
 
@@ -150,11 +150,11 @@
 
     /* Priority selector */
     .priority-opts { display: flex; gap: 6px; }
-    .priority-opt { flex: 1; padding: 7px; border-radius: 7px; border: 1.5px solid var(--border); background: #fff; font-size: 0.78rem; font-weight: 600; cursor: pointer; text-align: center; color: var(--muted); }
-    .priority-opt.sel-none { border-color: var(--border); background: #f9fafb; color: var(--muted); }
-    .priority-opt.sel-low { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
-    .priority-opt.sel-med { border-color: var(--amber); background: #fffbeb; color: var(--amber); }
-    .priority-opt.sel-high { border-color: var(--red); background: #fee2e2; color: var(--red); }
+    .priority-opt { flex: 1; padding: 7px; border-radius: 7px; border: 1.5px solid var(--border); background: var(--card); font-size: 0.78rem; font-weight: 600; cursor: pointer; text-align: center; color: var(--muted); }
+    .priority-opt.sel-none { border-color: var(--border); background: var(--bg); color: var(--muted); }
+    .priority-opt.sel-low { border-color: #2563eb; background: var(--hub-tint-info, #eff6ff); color: var(--hub-tint-info-fg, #2563eb); }
+    .priority-opt.sel-med { border-color: var(--amber); background: var(--hub-tint-warning, #fffbeb); color: var(--amber); }
+    .priority-opt.sel-high { border-color: var(--red); background: var(--hub-tint-danger, #fee2e2); color: var(--red); }
 
     /* Color picker */
     .color-opts { display: flex; gap: 8px; }
@@ -162,15 +162,15 @@
     .color-dot.sel { border-color: var(--text); }
 
     /* Recurrence */
-    .recur-section { background: #f9fafb; border-radius: 8px; padding: 12px; margin-top: 8px; }
+    .recur-section { background: var(--bg); border-radius: 8px; padding: 12px; margin-top: 8px; }
     .day-toggles { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
-    .day-btn { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--border); background: #fff; font-size: 0.72rem; font-weight: 700; cursor: pointer; color: var(--muted); display: flex; align-items: center; justify-content: center; }
+    .day-btn { width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--card); font-size: 0.72rem; font-weight: 700; cursor: pointer; color: var(--muted); display: flex; align-items: center; justify-content: center; }
     .day-btn.on { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
 
     /* Labels */
     .label-input-wrap { display: flex; gap: 6px; }
     .labels-list { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
-    .label-tag { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; padding: 3px 8px; border-radius: 10px; background: #f3f4f6; color: var(--muted); }
+    .label-tag { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; padding: 3px 8px; border-radius: 10px; background: var(--bg); color: var(--muted); }
     .label-tag button { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.8rem; padding: 0; line-height: 1; }
     .label-tag button:hover { color: var(--red); }
 
