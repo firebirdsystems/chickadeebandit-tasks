@@ -1,6 +1,6 @@
 # Tasks
 
-A [Chickadee Bandit](http://chickadeebandit.com) app.
+A [Chickadee Bandit](https://chickadeebandit.com/app-library/tasks) app.
 
 Full-featured family task manager. Create tasks with due dates, priorities, labels, recurrence, and subtasks. Assign to family members. Also syncs with Google Tasks and Apple Reminders.
 
