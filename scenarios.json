@@ -63,6 +63,194 @@
           "expect": { "status": 200, "rowCount": 0 }
         }
       ]
+    },
+    {
+      "name": "in a shared space only the steward reaches every member's tasks; a participant adult reaches their own",
+      "context": "shared_space",
+      "members": { "a": "adult", "b": "adult", "steward": "admin" },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_tasks__tasks (id, title, assignee_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+          "params": ["t-a", "A's task", "{{a}}", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"]
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_tasks__tasks (id, title, assignee_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+          "params": ["t-b", "B's task", "{{b}}", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"]
+        },
+        {
+          "action": "db",
+          "as": "a",
+          "sql": "SELECT id FROM app_tasks__tasks ORDER BY id",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "id": "t-a" }] }
+        },
+        {
+          "action": "db",
+          "as": "a",
+          "sql": "UPDATE app_tasks__tasks SET title = ? WHERE id = ?",
+          "params": ["taken over", "t-b"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "steward",
+          "sql": "SELECT id, title FROM app_tasks__tasks ORDER BY id",
+          "expect": { "status": 200, "rowCount": 2, "rowsContain": [{ "id": "t-b", "title": "B's task" }] }
+        },
+        {
+          "action": "db",
+          "as": "steward",
+          "sql": "UPDATE app_tasks__tasks SET title = ? WHERE id = ?",
+          "params": ["reassigned", "t-b"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "b",
+          "sql": "SELECT title FROM app_tasks__tasks",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "title": "reassigned" }] }
+        }
+      ]
+    },
+    {
+      "name": "in a household every adult reaches every member's tasks",
+      "members": { "a": "adult", "b": "adult" },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_tasks__tasks (id, title, assignee_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+          "params": ["t-b", "B's task", "{{b}}", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"]
+        },
+        {
+          "action": "db",
+          "as": "a",
+          "sql": "SELECT id FROM app_tasks__tasks",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "id": "t-b" }] }
+        }
+      ]
+    },
+    {
+      "name": "a child sees and changes only their own tasks and a task they add is assigned to themselves, while a parent assigns and edits the child's tasks",
+      "members": { "kid": "child", "parent": "adult" },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_tasks__tasks (id, title, assignee_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+          "params": ["t-parent", "Task t-parent", "{{parent}}", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"]
+        },
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "INSERT INTO app_tasks__tasks (id, title, assignee_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+          "params": ["t-assigned", "Feed the cat", "{{kid}}", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "INSERT INTO app_tasks__tasks (id, title, assignee_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+          "params": ["t-kid", "Homework", "{{parent}}", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "SELECT id, assignee_id FROM app_tasks__tasks ORDER BY id",
+          "expect": {
+            "status": 200,
+            "rowCount": 2,
+            "rowsContain": [
+              { "id": "t-assigned", "assignee_id": "scn-kid" },
+              { "id": "t-kid", "assignee_id": "scn-kid" }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "UPDATE app_tasks__tasks SET completed = 1 WHERE id = ?",
+          "params": ["t-parent"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "DELETE FROM app_tasks__tasks WHERE id = ?",
+          "params": ["t-parent"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "UPDATE app_tasks__tasks SET title = ? WHERE id = ?",
+          "params": ["Homework (math)", "t-kid"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "SELECT id, title, completed FROM app_tasks__tasks ORDER BY id",
+          "expect": {
+            "status": 200,
+            "rowCount": 3,
+            "rowsContain": [{ "id": "t-kid", "title": "Homework (math)" }, { "id": "t-parent", "completed": 0 }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "a child edits a shared list but cannot see or edit another member's private list",
+      "members": { "kid": "child", "parent": "adult" },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_tasks__lists (id, name, member_id, visibility, created_at) VALUES (?, ?, ?, ?, ?)",
+          "params": ["l-shared", "List l-shared", "{{parent}}", "everyone", "2026-01-01T00:00:00Z"]
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_tasks__lists (id, name, member_id, visibility, created_at) VALUES (?, ?, ?, ?, ?)",
+          "params": ["l-priv", "List l-priv", "{{parent}}", "private", "2026-01-01T00:00:00Z"]
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "SELECT id FROM app_tasks__lists",
+          "expect": { "status": 200, "rowCount": 1, "rowsContain": [{ "id": "l-shared" }] }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "UPDATE app_tasks__lists SET name = ? WHERE id = ?",
+          "params": ["Groceries", "l-shared"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "UPDATE app_tasks__lists SET name = ? WHERE id = ?",
+          "params": ["hijacked", "l-priv"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "DELETE FROM app_tasks__lists WHERE id = ?",
+          "params": ["l-priv"],
+          "expect": { "status": 200 }
+        },
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "SELECT id, name FROM app_tasks__lists ORDER BY id",
+          "expect": {
+            "status": 200,
+            "rowCount": 2,
+            "rowsContain": [{ "id": "l-priv", "name": "List l-priv" }, { "id": "l-shared", "name": "Groceries" }]
+          }
+        }
+      ]
     }
   ]
 }
