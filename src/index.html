@@ -242,7 +242,7 @@
 </div>
 
 <script type="module">
-import { memberColor, initial, esc, isAdult, hubConfirm, searchMatch, hubToday } from "/hub-sdk.js";
+import { memberColor, initial, esc, isAdult, hubConfirm, searchMatch, hubToday, glyph } from "/hub-sdk.js";
 import {
   PRIORITY_COLORS, PRIORITY_LABELS, PRIORITY_CLASSES,
   DAYS, DAY_LABELS,
@@ -630,12 +630,12 @@ function renderTaskRow(t) {
       <div class="task-row-inner">
         <button class="check ${t.completed ? 'done' : ''} ${overdue ? 'overdue-check' : ''}"
           onclick="event.stopPropagation();completeTask(${jsArg(t.id)})">
-          ${t.completed ? "✓" : ""}
+          ${t.completed ? `${glyph("tick", { accent: "currentColor" })}` : ""}
         </button>
         <div class="task-body">
           <div class="task-title ${t.completed ? 'done' : ''}">${esc(t.title)}</div>
           <div class="task-sub">
-            ${subsTotal > 0 ? `<span class="subtask-count">☑ ${subsDone}/${subsTotal}</span>` : ""}
+            ${subsTotal > 0 ? `<span class="subtask-count">${glyph("checklist")} ${subsDone}/${subsTotal}</span>` : ""}
             ${labels.map(l => `<span class="tag">${esc(l)}</span>`).join("")}
           </div>
         </div>
@@ -653,7 +653,7 @@ function renderInbox() {
   return `
     <div class="task-group inbox-group">
       <div class="task-group-header">
-        <div class="member"><span class="inbox-icon">📥</span> Inbox <span class="task-count">${inboxItems.length} to sort</span></div>
+        <div class="member"><span class="inbox-icon">${glyph("box")}</span> Inbox <span class="task-count">${inboxItems.length} to sort</span></div>
       </div>
       <div class="inbox-hint">Quick-added from a shared device. Turn each into a task or dismiss it.</div>
       ${inboxItems.map(it => `
@@ -788,7 +788,7 @@ function renderSyncedTab() {
               <div class="priority-bar"></div>
               <div class="task-row-inner">
                 <div class="check ${t.completed?'done':''} ${overdue?'overdue-check':''}" aria-hidden="true">
-                  ${t.completed ? "✓" : ""}
+                  ${t.completed ? `${glyph("tick", { accent: "currentColor" })}` : ""}
                 </div>
                 <div class="task-body">
                   <div class="task-title ${t.completed?'done':''}">${esc(t.title)}</div>
@@ -980,7 +980,7 @@ function buildModalForm(task, isNew) {
       <ul class="subtask-list" id="subtask-list">
         ${subs.map(s => `
           <li class="subtask-item" data-sub="${esc(s.id)}">
-            <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask(${jsArg(s.id)})">${s.completed?'✓':''}</button>
+            <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask(${jsArg(s.id)})">${s.completed?`${glyph("tick", { accent: "currentColor" })}`:''}</button>
             <span class="subtask-title ${s.completed?'done':''}">${esc(s.title)}</span>
             <button class="btn-sm" style="padding:3px 8px;font-size:.7rem" onclick="deleteSubtask(${jsArg(s.id)})">×</button>
           </li>
@@ -1298,7 +1298,7 @@ function renderSubtaskList(parentId) {
   const subs = localSubtasks.filter(s => s.parent_id === parentId);
   list.innerHTML = subs.map(s => `
     <li class="subtask-item" data-sub="${esc(s.id)}">
-      <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask(${jsArg(s.id)})">${s.completed?'✓':''}</button>
+      <button class="check-sm ${s.completed?'done':''}" onclick="toggleSubtask(${jsArg(s.id)})">${s.completed?`${glyph("tick", { accent: "currentColor" })}`:''}</button>
       <span class="subtask-title ${s.completed?'done':''}">${esc(s.title)}</span>
       <button class="btn-sm" style="padding:3px 8px;font-size:.7rem" onclick="deleteSubtask(${jsArg(s.id)})">×</button>
     </li>

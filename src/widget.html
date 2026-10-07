@@ -122,7 +122,7 @@
 </head>
 <body>
 <script type="module">
-import { esc } from "/hub-sdk.js";
+import { esc, glyph, chickadee } from "/hub-sdk.js";
 import { isOverdue, isToday, todayStr, parseLabels } from "./logic.js";
 
 const DB         = window.__DB_URL ?? "";
@@ -187,7 +187,7 @@ async function toggleTask(id) {
 function render() {
   if (!ME?.id) {
     document.body.innerHTML = `
-      <div class="header"><span class="header-title">✅ Tasks</span></div>
+      <div class="header"><span class="header-title">${glyph("checklist")} Tasks</span></div>
       <div class="empty">
         <span>Sign in to see your tasks</span>
         <a href="/run/${APP_ID}" style="color:#111827;font-weight:600;font-size:11px">Open app →</a>
@@ -202,7 +202,7 @@ function render() {
 
   const header = `
     <div class="header">
-      <span class="header-title">✅ Tasks</span>
+      <span class="header-title">${glyph("checklist")} Tasks</span>
       <span class="header-count">${totalOpen} open</span>
     </div>`;
 
@@ -210,7 +210,7 @@ function render() {
   if (visible.length === 0 && !DB) {
     content = `<div class="empty"><span>No tasks yet</span><a href="/run/${APP_ID}" style="color:#111827;font-weight:600;font-size:11px">Create tasks →</a></div>`;
   } else if (visible.length === 0) {
-    content = `<div class="empty"><span>All caught up for today! 🎉</span></div>`;
+    content = `<div class="empty">${chickadee("sleeping", { size: 56 })}<span>All caught up for today!</span></div>`;
   } else {
     // Overdue first, then today
     const sorted = [...visible].sort((a, b) => {
@@ -226,7 +226,7 @@ function render() {
           ? `<span class="due-badge overdue">Overdue</span>`
           : `<span class="due-badge today">Today</span>`;
         return `<div class="task-row${t.completed ? ' done' : ''}" onclick="doToggle(${jsArg(t.id)})">
-          <div class="check${overdue && !t.completed ? ' overdue' : ''}">${t.completed ? '✓' : ''}</div>
+          <div class="check${overdue && !t.completed ? ' overdue' : ''}">${t.completed ? glyph('tick', { accent: 'currentColor' }) : ''}</div>
           <span class="task-name">${esc(t.title)}</span>
           ${badge}
         </div>`;
