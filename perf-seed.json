@@ -1,0 +1,549 @@
+{
+ "seed": [
+  {
+   "sql": "INSERT INTO app_tasks__lists (id, name, color, member_id, visibility, sort_order, created_at) VALUES (?, ?, ?, ?, ?, 0, strftime('%Y-%m-%dT%H:%M:%fZ','now','-40 days'))",
+   "params": [
+    "tsk-l1",
+    "Home",
+    "#4f46e5",
+    "{{me}}",
+    "everyone"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__lists (id, name, color, member_id, visibility, sort_order, created_at) VALUES (?, ?, ?, ?, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ','now','-39 days'))",
+   "params": [
+    "tsk-l2",
+    "Errands",
+    "#0891b2",
+    "{{me}}",
+    "private"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__lists (id, name, color, member_id, visibility, sort_order, created_at) VALUES (?, ?, ?, ?, ?, 2, strftime('%Y-%m-%dT%H:%M:%fZ','now','-38 days'))",
+   "params": [
+    "tsk-l3",
+    "Work",
+    "#d97706",
+    "{{me}}",
+    "private"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__lists (id, name, color, member_id, visibility, sort_order, created_at) VALUES (?, ?, ?, ?, ?, 3, strftime('%Y-%m-%dT%H:%M:%fZ','now','-37 days'))",
+   "params": [
+    "tsk-l4",
+    "School",
+    "#16a34a",
+    "{{me}}",
+    "everyone"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, notes, assignee_id, due_date, priority, labels, recurrence, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, date('now'), 2, ?, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-12 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-1",
+    "tsk-l1",
+    "Replace furnace filter",
+    "20x25x1, two in the garage.",
+    "{{me}}",
+    "[\"house\"]",
+    "{\"freq\": \"monthly\", \"interval\": 1, \"end_type\": \"never\"}",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','-3 days'), 3, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-15 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-2",
+    "tsk-l1",
+    "Fix the leaky kitchen faucet",
+    "{{me}}",
+    "[\"house\", \"repair\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','+5 days'), 1, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-9 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-3",
+    "tsk-l1",
+    "Clean out the gutters",
+    "{{me}}",
+    "[\"yard\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, due_time, priority, labels, recurrence, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','+1 days'), ?, 1, ?, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-6 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-4",
+    "tsk-l1",
+    "Take out recycling",
+    "{{me}}",
+    "07:00",
+    "[]",
+    "{\"freq\": \"weekly\", \"interval\": 1, \"days\": [\"sat\"], \"end_type\": \"never\"}",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-20 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-5",
+    "tsk-l1",
+    "Organize the hall closet",
+    "{{me}}",
+    "[]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, notes, assignee_id, due_date, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, date('now','+12 days'), 1, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-8 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-6",
+    "tsk-l1",
+    "Schedule chimney sweep",
+    "Ask for the same crew as last year.",
+    "{{me}}",
+    "[\"house\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, due_time, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now'), ?, 2, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-3 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-7",
+    "tsk-l2",
+    "Pick up dry cleaning",
+    "{{me}}",
+    "17:30",
+    "[]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','-1 days'), 1, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-10 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-8",
+    "tsk-l2",
+    "Return library books",
+    "{{me}}",
+    "[\"kids\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, notes, assignee_id, due_date, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, date('now','+9 days'), 3, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-14 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-9",
+    "tsk-l2",
+    "Renew car registration",
+    "Needs the emissions certificate first.",
+    "{{me}}",
+    "[\"car\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','+4 days'), 2, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-5 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-10",
+    "tsk-l2",
+    "Buy birthday gift for Dana",
+    "{{me}}",
+    "[\"family\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-18 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-11",
+    "tsk-l2",
+    "Drop off donation boxes",
+    "{{me}}",
+    "[]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, due_time, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','+2 days'), ?, 3, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-7 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-12",
+    "tsk-l3",
+    "Send quarterly report draft",
+    "{{me}}",
+    "09:00",
+    "[\"report\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, notes, assignee_id, due_date, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, date('now','+7 days'), 2, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-11 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-13",
+    "tsk-l3",
+    "Book travel for the offsite",
+    "Flights and two hotel nights.",
+    "{{me}}",
+    "[\"travel\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','-2 days'), 2, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-13 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-14",
+    "tsk-l3",
+    "Review vendor contract",
+    "{{me}}",
+    "[]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, recurrence, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','+3 days'), 1, ?, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-4 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-15",
+    "tsk-l3",
+    "Submit expense receipts",
+    "{{me}}",
+    "[]",
+    "{\"freq\": \"monthly\", \"interval\": 1, \"end_type\": \"never\"}",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','+1 days'), 3, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-2 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-16",
+    "tsk-l4",
+    "Sign field trip permission slip",
+    "{{me}}",
+    "[\"kids\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','+6 days'), 1, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-6 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-17",
+    "tsk-l4",
+    "Order school photos",
+    "{{me}}",
+    "[\"kids\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, notes, assignee_id, due_date, due_time, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, date('now','+10 days'), ?, 2, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-5 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-18",
+    "tsk-l4",
+    "Parent teacher conference prep",
+    "List questions about reading group.",
+    "{{me}}",
+    "16:00",
+    "[\"kids\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, completed, created_by, created_at, updated_at) VALUES (?, NULL, ?, ?, date('now'), 2, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-19",
+    "Call the dentist about the crown",
+    "{{me}}",
+    "[\"health\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, recurrence, completed, created_by, created_at, updated_at) VALUES (?, NULL, ?, ?, date('now'), 0, ?, ?, 0, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-2 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 days'))",
+   "params": [
+    "tsk-20",
+    "Water the houseplants",
+    "{{me}}",
+    "[]",
+    "{\"freq\": \"daily\", \"interval\": 1, \"end_type\": \"never\"}",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, completed, completed_at, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','-6 days'), 1, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ','now','-5 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-16 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-5 days'))",
+   "params": [
+    "tsk-21",
+    "tsk-l1",
+    "Mow the lawn",
+    "{{me}}",
+    "[\"yard\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, completed, completed_at, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','-4 days'), 2, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ','now','-4 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-8 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-4 days'))",
+   "params": [
+    "tsk-22",
+    "tsk-l2",
+    "Pick up prescription",
+    "{{me}}",
+    "[\"health\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, completed, completed_at, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','-8 days'), 3, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ','now','-8 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-17 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-8 days'))",
+   "params": [
+    "tsk-23",
+    "tsk-l3",
+    "Prepare slides for Monday",
+    "{{me}}",
+    "[]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, completed, completed_at, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','-2 days'), 0, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ','now','-2 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-4 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-2 days'))",
+   "params": [
+    "tsk-24",
+    "tsk-l4",
+    "Pack gym kit",
+    "{{me}}",
+    "[\"kids\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, completed, completed_at, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','-10 days'), 2, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ','now','-9 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-22 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-9 days'))",
+   "params": [
+    "tsk-25",
+    "tsk-l1",
+    "Change smoke detector batteries",
+    "{{me}}",
+    "[\"house\"]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, due_date, priority, labels, completed, completed_at, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, date('now','-12 days'), 3, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ','now','-12 days'), ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-25 days'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-12 days'))",
+   "params": [
+    "tsk-26",
+    "tsk-l2",
+    "Mail the tax forms",
+    "{{me}}",
+    "[]",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, completed_at, parent_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ','now','-20 hours'), ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-100 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-20 hours'))",
+   "params": [
+    "tsk-s1",
+    "tsk-l1",
+    "Shut off water under the sink",
+    "{{me}}",
+    "[]",
+    "tsk-2",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, completed_at, parent_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ','now','-27 hours'), ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-99 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-27 hours'))",
+   "params": [
+    "tsk-s2",
+    "tsk-l1",
+    "Buy replacement cartridge",
+    "{{me}}",
+    "[]",
+    "tsk-2",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, parent_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 0, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-98 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-34 hours'))",
+   "params": [
+    "tsk-s3",
+    "tsk-l1",
+    "Swap the cartridge",
+    "{{me}}",
+    "[]",
+    "tsk-2",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, completed_at, parent_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ','now','-41 hours'), ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-97 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-41 hours'))",
+   "params": [
+    "tsk-s4",
+    "tsk-l2",
+    "Get emissions test",
+    "{{me}}",
+    "[]",
+    "tsk-9",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, parent_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 0, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-96 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-48 hours'))",
+   "params": [
+    "tsk-s5",
+    "tsk-l2",
+    "Pay renewal online",
+    "{{me}}",
+    "[]",
+    "tsk-9",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, completed_at, parent_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ','now','-55 hours'), ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-95 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-55 hours'))",
+   "params": [
+    "tsk-s6",
+    "tsk-l3",
+    "Compare flight times",
+    "{{me}}",
+    "[]",
+    "tsk-13",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, parent_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 0, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-94 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-62 hours'))",
+   "params": [
+    "tsk-s7",
+    "tsk-l3",
+    "Reserve hotel",
+    "{{me}}",
+    "[]",
+    "tsk-13",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, parent_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 0, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-93 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-69 hours'))",
+   "params": [
+    "tsk-s8",
+    "tsk-l3",
+    "Add to shared calendar",
+    "{{me}}",
+    "[]",
+    "tsk-13",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, parent_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 0, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-92 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-76 hours'))",
+   "params": [
+    "tsk-s9",
+    "tsk-l4",
+    "Read last report card",
+    "{{me}}",
+    "[]",
+    "tsk-18",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, completed_at, parent_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ','now','-83 hours'), ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-91 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-83 hours'))",
+   "params": [
+    "tsk-s10",
+    "tsk-l4",
+    "Email teacher to confirm slot",
+    "{{me}}",
+    "[]",
+    "tsk-18",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, parent_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 0, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-90 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-90 hours'))",
+   "params": [
+    "tsk-s11",
+    "tsk-l1",
+    "Borrow the tall ladder",
+    "{{me}}",
+    "[]",
+    "tsk-3",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, parent_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 0, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-89 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-97 hours'))",
+   "params": [
+    "tsk-s12",
+    "tsk-l1",
+    "Buy leaf bags",
+    "{{me}}",
+    "[]",
+    "tsk-3",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, completed_at, parent_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 1, strftime('%Y-%m-%dT%H:%M:%fZ','now','-104 hours'), ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-88 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-104 hours'))",
+   "params": [
+    "tsk-s13",
+    "tsk-l3",
+    "Pull the numbers from finance",
+    "{{me}}",
+    "[]",
+    "tsk-12",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__tasks (id, list_id, title, assignee_id, priority, labels, completed, parent_id, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, 0, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-87 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now','-111 hours'))",
+   "params": [
+    "tsk-s14",
+    "tsk-l3",
+    "Write summary section",
+    "{{me}}",
+    "[]",
+    "tsk-12",
+    "{{me}}"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__inbox (id, title, title_normalized, added_by_id, added_by_name, created_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-3 hours'))",
+   "params": [
+    "tsk-i1",
+    "Call the plumber back",
+    "call the plumber back",
+    "{{me}}",
+    "Kiosk"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__inbox (id, title, title_normalized, added_by_id, added_by_name, created_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-12 hours'))",
+   "params": [
+    "tsk-i2",
+    "Buy stamps",
+    "buy stamps",
+    "{{me}}",
+    "Kiosk"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__inbox (id, title, title_normalized, added_by_id, added_by_name, created_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-21 hours'))",
+   "params": [
+    "tsk-i3",
+    "Find the spare house key",
+    "find the spare house key",
+    "{{me}}",
+    "Kiosk"
+   ]
+  },
+  {
+   "sql": "INSERT INTO app_tasks__inbox (id, title, title_normalized, added_by_id, added_by_name, created_at) VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now','-30 hours'))",
+   "params": [
+    "tsk-i4",
+    "Order printer ink",
+    "order printer ink",
+    "{{me}}",
+    "Kiosk"
+   ]
+  }
+ ]
+}
