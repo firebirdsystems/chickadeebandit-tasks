@@ -90,3 +90,33 @@ export function sortTasks(tasks) {
 export function searchableFields(item) {
   return [item.title, item.notes, item.labels];
 }
+
+function isAdultMember(member) {
+  return !!member && (member.role === "adult" || member.role === "admin");
+}
+
+/**
+ * Whether a member sees and assigns other members' tasks. Mirrors the hub's
+ * rule for the tasks table (owner_only on assignee_id): any adult in a
+ * household, and only the steward in a shared space. Anyone else reads and
+ * writes the tasks assigned to them alone.
+ */
+export function supervisesTasks(member, { tenantKind = "household", isAdmin = false } = {}) {
+  return tenantKind === "household" ? isAdultMember(member) : isAdmin === true;
+}
+
+/** The members a task may be assigned to: everyone for a supervisor, the
+ *  member themself for anyone else. */
+export function assignableMembers(member, members, tenant) {
+  return supervisesTasks(member, tenant) ? members : members.filter(m => m.id === member?.id);
+}
+
+/**
+ * The assignee a new task is saved under. The hub stamps a non-supervisor's
+ * insert with their own id whatever the statement names, so the page and the
+ * `task.created` event use this value rather than the one picked in the form.
+ */
+export function savedAssigneeId(chosenId, member, tenant) {
+  if (supervisesTasks(member, tenant)) return chosenId || null;
+  return member?.id ?? null;
+}

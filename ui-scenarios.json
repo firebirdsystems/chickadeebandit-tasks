@@ -1,0 +1,193 @@
+{
+  "scenarios": [
+    {
+      "name": "in a shared space a participant sees only their own tasks and can assign only to themself; the steward sees everyone's",
+      "context": "shared_space",
+      "members": {
+        "steward": "admin",
+        "pat": "adult",
+        "sam": "adult"
+      },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_tasks__tasks (id, title, assignee_id, created_by, created_at, updated_at) VALUES ('t-pat', 'Order the banner', ?, ?, ?, ?), ('t-sam', 'Book the hall', ?, ?, ?, ?)",
+          "params": [
+            "{{pat}}",
+            "{{steward}}",
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T00:00:00Z",
+            "{{sam}}",
+            "{{steward}}",
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T00:00:00Z"
+          ]
+        },
+        {
+          "action": "open",
+          "as": "pat"
+        },
+        {
+          "action": "expectVisible",
+          "as": "pat",
+          "selector": "[data-testid=\"task-row\"][data-task-id=\"t-pat\"]"
+        },
+        {
+          "action": "expectCount",
+          "as": "pat",
+          "selector": "[data-testid=\"task-row\"]",
+          "count": 1
+        },
+        {
+          "action": "expectVisible",
+          "as": "pat",
+          "selector": "[data-testid=\"scope-note\"]"
+        },
+        {
+          "action": "expectVisible",
+          "as": "pat",
+          "selector": "[data-testid=\"app-tab\"][data-tab=\"mine\"]"
+        },
+        {
+          "action": "expectCount",
+          "as": "pat",
+          "selector": "[data-testid=\"app-tab\"][data-tab=\"family\"]",
+          "count": 0
+        },
+        {
+          "action": "click",
+          "as": "pat",
+          "selector": "[data-testid=\"new-task\"]"
+        },
+        {
+          "action": "expectCount",
+          "as": "pat",
+          "selector": "[data-testid=\"field-assignee\"] option",
+          "count": 1
+        },
+        {
+          "action": "open",
+          "as": "steward"
+        },
+        {
+          "action": "expectCount",
+          "as": "steward",
+          "selector": "[data-testid=\"scope-note\"]",
+          "count": 0
+        },
+        {
+          "action": "expectText",
+          "as": "steward",
+          "selector": "[data-testid=\"app-tab\"][data-tab=\"family\"]",
+          "text": "Everyone"
+        },
+        {
+          "action": "click",
+          "as": "steward",
+          "selector": "[data-testid=\"app-tab\"][data-tab=\"family\"]"
+        },
+        {
+          "action": "expectVisible",
+          "as": "steward",
+          "selector": "[data-testid=\"task-row\"][data-task-id=\"t-pat\"]"
+        },
+        {
+          "action": "expectVisible",
+          "as": "steward",
+          "selector": "[data-testid=\"task-row\"][data-task-id=\"t-sam\"]"
+        },
+        {
+          "action": "click",
+          "as": "steward",
+          "selector": "[data-testid=\"new-task\"]"
+        },
+        {
+          "action": "expectCount",
+          "as": "steward",
+          "selector": "[data-testid=\"field-assignee\"] option",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "name": "at home a child has no tab of everyone's tasks and sees only their own; an adult has the Family tab with every member's",
+      "members": {
+        "parent": "adult",
+        "kid": "child"
+      },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_tasks__tasks (id, title, assignee_id, created_by, created_at, updated_at) VALUES ('t-kid', 'Feed the cat', ?, ?, ?, ?), ('t-parent', 'Renew passport', ?, ?, ?, ?)",
+          "params": [
+            "{{kid}}",
+            "{{parent}}",
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T00:00:00Z",
+            "{{parent}}",
+            "{{parent}}",
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T00:00:00Z"
+          ]
+        },
+        {
+          "action": "open",
+          "as": "kid"
+        },
+        {
+          "action": "expectVisible",
+          "as": "kid",
+          "selector": "[data-testid=\"task-row\"][data-task-id=\"t-kid\"]"
+        },
+        {
+          "action": "expectCount",
+          "as": "kid",
+          "selector": "[data-testid=\"task-row\"]",
+          "count": 1
+        },
+        {
+          "action": "expectVisible",
+          "as": "kid",
+          "selector": "[data-testid=\"app-tab\"][data-tab=\"mine\"]"
+        },
+        {
+          "action": "expectCount",
+          "as": "kid",
+          "selector": "[data-testid=\"app-tab\"][data-tab=\"family\"]",
+          "count": 0
+        },
+        {
+          "action": "expectCount",
+          "as": "kid",
+          "selector": "[data-testid=\"scope-note\"]",
+          "count": 0
+        },
+        {
+          "action": "open",
+          "as": "parent"
+        },
+        {
+          "action": "expectText",
+          "as": "parent",
+          "selector": "[data-testid=\"app-tab\"][data-tab=\"family\"]",
+          "text": "Family"
+        },
+        {
+          "action": "click",
+          "as": "parent",
+          "selector": "[data-testid=\"app-tab\"][data-tab=\"family\"]"
+        },
+        {
+          "action": "expectVisible",
+          "as": "parent",
+          "selector": "[data-testid=\"task-row\"][data-task-id=\"t-kid\"]"
+        },
+        {
+          "action": "expectVisible",
+          "as": "parent",
+          "selector": "[data-testid=\"task-row\"][data-task-id=\"t-parent\"]"
+        }
+      ]
+    }
+  ]
+}

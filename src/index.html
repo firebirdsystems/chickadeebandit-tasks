@@ -118,6 +118,7 @@
     .empty { text-align: center; padding: 48px 20px; color: var(--muted); }
     .empty h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
     .empty p { font-size: 0.85rem; line-height: 1.6; }
+    .scope-note { margin: 14px 0 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
     .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 0.9rem; }
 
     /* Connections */
@@ -211,7 +212,7 @@
     <h1>Tasks</h1>
     <div class="header-actions">
       <button class="btn-ghost" id="sync-btn" onclick="syncAll()">Sync now</button>
-      <button class="btn-primary" onclick="openNewTask()">+ New</button>
+      <button class="btn-primary" data-testid="new-task" onclick="openNewTask()">+ New</button>
     </div>
   </div>
   <div id="root"><div class="loading">Loading…</div></div>
@@ -242,13 +243,14 @@
 </div>
 
 <script type="module">
-import { memberColor, initial, esc, isAdult, hubConfirm, searchMatch, hubToday, glyph } from "/hub-sdk.js";
+import { memberColor, initial, esc, hubConfirm, searchMatch, hubToday, glyph } from "/hub-sdk.js";
 import {
   PRIORITY_COLORS, PRIORITY_LABELS, PRIORITY_CLASSES,
   DAYS, DAY_LABELS,
   todayStr, parseLabels,
   isOverdue, isToday, isTomorrow, isUpcoming, formatDue,
   nextDueDate, sortTasks, searchableFields,
+  supervisesTasks, assignableMembers, savedAssigneeId,
 } from "./logic.js";
 
 const CONTEXT = window.__CONTEXT_URL ?? "";
@@ -256,6 +258,14 @@ const DB      = window.__DB_URL ?? "";
 const ME      = window.__CURRENT_MEMBER ?? null;
 const APP_ID  = window.__APP_ID ?? "tasks";
 const EVENTS_URL = window.__EVENTS_URL ?? "/api/events";
+// Seeing and assigning other members' tasks: any adult at home, only the
+// steward in a shared space. The hub decides; this keeps the page from
+// offering what would be re-stamped or come back empty.
+const TENANT = { tenantKind: window.__TENANT_KIND ?? "household", spaceKind: window.__SPACE_KIND ?? null, isAdmin: window.__IS_ADMIN === true };
+const SUPERVISES = supervisesTasks(ME, TENANT);
+// The tab of every member's tasks is for whoever supervises: anyone else
+// would find only their own there. It is the family at home, everyone in a space.
+const EVERYONE_LABEL = TENANT.tenantKind === "household" ? "Family" : "Everyone";
 
 const LIST_COLORS = ["#4f46e5","#0891b2","#16a34a","#d97706","#dc2626","#7c3aed"];
 
@@ -389,18 +399,19 @@ async function reloadLocal() {
 
 // ── Task CRUD ─────────────────────────────────────────────────────────────────
 async function createTask(fields, id = uid(), ts = now()) {
+  const assigneeId = savedAssigneeId(fields.assignee_id, ME, TENANT);
   await dbRun(
     `INSERT INTO app_tasks__tasks (id,list_id,title,notes,assignee_id,due_date,due_time,priority,labels,recurrence,completed,parent_id,created_by,created_at,updated_at)
      VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?,?,?)`,
     [id, fields.list_id||null, fields.title, fields.notes||"",
-     fields.assignee_id||null, fields.due_date||null, fields.due_time||null,
+     assigneeId, fields.due_date||null, fields.due_time||null,
      fields.priority||0, JSON.stringify(fields.labels||[]),
      fields.recurrence ? JSON.stringify(fields.recurrence) : null,
      fields.parent_id||null, ME?.id||null, ts, ts]
   );
   await publishEvent("task.created", id, {
     task_id: id,
-    assignee_id: fields.assignee_id || undefined,
+    assignee_id: assigneeId || undefined,
     list_id: fields.list_id || undefined,
     due_date: fields.due_date || undefined,
     created_by: ME?.id || undefined,
@@ -598,10 +609,6 @@ function filterLocalTasks() {
     else if (mineFilter === "done")     tasks = tasks.filter(t => !!t.completed);
     else tasks = tasks.filter(t => !t.completed); // "all" = incomplete
   } else if (activeTab === "family") {
-    // Adults see all; children see only their own
-    if (!ME || (!isAdult(ME, members) && meId)) {
-      tasks = tasks.filter(t => t.assignee_id === meId || t.created_by === meId);
-    }
     tasks = tasks.filter(t => !t.completed);
   }
 
@@ -625,7 +632,7 @@ function renderTaskRow(t) {
   const overdue = isOverdue(t, hubToday());
 
   return `
-    <div class="task-row ${t.completed ? 'done-row' : ''}" onclick="openTask(${jsArg(t.id)})">
+    <div class="task-row ${t.completed ? 'done-row' : ''}" data-testid="task-row" data-task-id="${esc(t.id)}" onclick="openTask(${jsArg(t.id)})">
       ${renderPriorityBar(t.priority)}
       <div class="task-row-inner">
         <button class="check ${t.completed ? 'done' : ''} ${overdue ? 'overdue-check' : ''}"
@@ -704,7 +711,8 @@ function renderMineTab() {
         <p>${searchQ ? `Nothing matches "${esc(searchQ)}".` : mineFilter === "done" ? "Completed tasks will appear here." : "Use the quick add above or tap + New to create a task."}</p>
       </div>` :
       `<div class="task-group">${tasks.map(renderTaskRow).join("")}</div>`
-    }`;
+    }
+    ${SUPERVISES || TENANT.tenantKind === "household" ? "" : `<p class="scope-note" data-testid="scope-note">In a shared space, the steward sees and assigns everyone's tasks.</p>`}`;
 }
 
 function renderFamilyTab() {
@@ -719,7 +727,9 @@ function renderFamilyTab() {
     grouped[key].push(t);
   }
 
-  if (tasks.length === 0) return `<div class="empty"><h3>No family tasks</h3><p>Tasks assigned to family members will appear here.</p></div>`;
+  if (tasks.length === 0) return TENANT.tenantKind === "household"
+    ? `<div class="empty"><h3>No family tasks</h3><p>Tasks assigned to family members will appear here.</p></div>`
+    : `<div class="empty"><h3>No open tasks</h3><p>Tasks assigned to members will appear here.</p></div>`;
 
   return Object.entries(grouped).map(([membId, mtasks]) => {
     const m = memberById(membId);
@@ -784,7 +794,7 @@ function renderSyncedTab() {
             else dueLabel = d.toLocaleDateString("en-US",{month:"short",day:"numeric"});
           }
           return `
-            <div class="task-row ${t.completed?'done-row':''}" style="cursor:default">
+            <div class="task-row ${t.completed?'done-row':''}" data-testid="synced-task-row" style="cursor:default">
               <div class="priority-bar"></div>
               <div class="task-row-inner">
                 <div class="check ${t.completed?'done':''} ${overdue?'overdue-check':''}" aria-hidden="true">
@@ -852,10 +862,10 @@ function render() {
 
   document.getElementById("root").innerHTML = `
     <div class="tabs">
-      <button class="tab ${activeTab==='mine'?'active':''}"        onclick="setTab('mine')">My Tasks</button>
-      <button class="tab ${activeTab==='family'?'active':''}"      onclick="setTab('family')">Family</button>
-      <button class="tab ${activeTab==='synced'?'active':''}"      onclick="setTab('synced')">Synced</button>
-      <button class="tab ${activeTab==='connections'?'active':''}" onclick="setTab('connections')">Connections</button>
+      <button class="tab ${activeTab==='mine'?'active':''}"        data-testid="app-tab" data-tab="mine" onclick="setTab('mine')">My Tasks</button>
+      ${SUPERVISES ? `<button class="tab ${activeTab==='family'?'active':''}"      data-testid="app-tab" data-tab="family" onclick="setTab('family')">${EVERYONE_LABEL}</button>` : ""}
+      <button class="tab ${activeTab==='synced'?'active':''}"      data-testid="app-tab" data-tab="synced" onclick="setTab('synced')">Synced</button>
+      <button class="tab ${activeTab==='connections'?'active':''}" data-testid="app-tab" data-tab="connections" onclick="setTab('connections')">Connections</button>
     </div>
     ${activeTab === "mine" || activeTab === "family" ? `<div class="search-row"><input id="search" class="search-input" type="search" placeholder="Search tasks…" aria-label="Search tasks" value="${esc(searchQ)}" /></div>` : ""}
     <div id="tab-body">${(tabContent[activeTab] || tabContent.mine)()}</div>
@@ -882,7 +892,7 @@ function buildModalForm(task, isNew) {
   const recurCount  = recur?.count || "";
   const recurEndDate = recur?.end_date || "";
   const visibleLists = localLists.filter(l => l.visibility === "everyone" || l.member_id === ME?.id);
-  const assignableMembers = isAdult(ME, members) ? members : members.filter(m => m.id === ME?.id);
+  const assignable = assignableMembers(ME, members, TENANT);
 
   // Subtasks
   const subs = localSubtasks.filter(s => s.parent_id === task.id);
@@ -915,13 +925,14 @@ function buildModalForm(task, isNew) {
         <input type="time" id="f-due-time" value="${esc(task.due_time||"")}" />
       </div>
     </div>
+    ${SUPERVISES || isNew ? `
     <div class="field">
       <label>Assignee</label>
-      <select id="f-assignee">
-        ${isAdult(ME, members) ? `<option value="">— Unassigned —</option>` : ""}
-        ${assignableMembers.map(m => `<option value="${esc(m.id)}" ${task.assignee_id===m.id?'selected':''}>${esc(m.name)}</option>`).join("")}
+      <select id="f-assignee" data-testid="field-assignee">
+        ${SUPERVISES ? `<option value="">— Unassigned —</option>` : ""}
+        ${assignable.map(m => `<option value="${esc(m.id)}" ${task.assignee_id===m.id?'selected':''}>${esc(m.name)}</option>`).join("")}
       </select>
-    </div>
+    </div>` : ""}
     <div class="field">
       <label>List</label>
       <select id="f-list">
@@ -1180,7 +1191,7 @@ window.saveTask = async function() {
       list_id: fields.list_id || null,
       title: fields.title,
       notes: fields.notes || "",
-      assignee_id: fields.assignee_id || null,
+      assignee_id: savedAssigneeId(fields.assignee_id, ME, TENANT),
       due_date: fields.due_date || null,
       due_time: fields.due_time || null,
       priority: fields.priority || 0,
@@ -1200,6 +1211,9 @@ window.saveTask = async function() {
     if (consumeInboxId) await dbRun("DELETE FROM app_tasks__inbox WHERE id=?", [consumeInboxId]);
   } else {
     const updateFields = { ...fields, labels: JSON.stringify(fields.labels), recurrence: fields.recurrence ? JSON.stringify(fields.recurrence) : null };
+    // Only a supervisor is offered the assignee field when editing; for anyone
+    // else the task stays with its assignee, so the column is left out of the SET.
+    if (!SUPERVISES) delete updateFields.assignee_id;
     const taskId = modalTask.id;
     // Optimistic: update the in-memory object directly (modalTask is a reference into localTasks)
     Object.assign(modalTask, updateFields);
@@ -1460,7 +1474,7 @@ window.confirmDeleteList = async function(id) {
 };
 
 // ── Global nav ────────────────────────────────────────────────────────────────
-window.setTab        = (t) => { activeTab = t; render(); };
+window.setTab        = (t) => { activeTab = t === "family" && !SUPERVISES ? "mine" : t; render(); };
 window.setMineFilter = (f) => { mineFilter = f; render(); };
 window.setActiveList = (id) => { activeListId = id; render(); };
 window.completeTask  = completeTask;

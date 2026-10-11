@@ -5,6 +5,7 @@ import {
   parseLabels,
   isOverdue, isToday, isTomorrow, isUpcoming, formatDue,
   nextDueDate, sortTasks, searchableFields,
+  supervisesTasks, assignableMembers, savedAssigneeId,
 } from "../src/logic.js";
 
 const TODAY = "2025-06-15"; // Sunday
@@ -247,5 +248,50 @@ describe("searchableFields", () => {
     const fields = searchableFields({ title: "Call back", notes: "plumber, 07700 900123", labels: "house,urgent" });
     expect(fields).toContain("plumber, 07700 900123");
     expect(fields).toContain("house,urgent");
+  });
+});
+
+describe("who supervises tasks", () => {
+  const adult = { id: "a1", role: "adult" };
+  const child = { id: "c1", role: "child" };
+  const other = { id: "a2", role: "adult" };
+  const members = [adult, child, other];
+  const participant = { tenantKind: "shared_space", spaceKind: "general", isAdmin: false };
+  const steward = { tenantKind: "shared_space", spaceKind: "general", isAdmin: true };
+  const coparentSteward = { tenantKind: "shared_space", spaceKind: "coparenting", isAdmin: true };
+
+  it("a household is the default, where any adult supervises", () => {
+    expect(supervisesTasks(adult)).toBe(true);
+    expect(supervisesTasks(child)).toBe(false);
+    expect(supervisesTasks(null)).toBe(false);
+    expect(supervisesTasks(child, { tenantKind: "household", isAdmin: true })).toBe(false);
+  });
+
+  it("only the steward supervises in a shared space", () => {
+    expect(supervisesTasks(adult, participant)).toBe(false);
+    expect(supervisesTasks(adult, steward)).toBe(true);
+    expect(supervisesTasks(adult, coparentSteward)).toBe(true);
+  });
+
+  it("offers every member to a supervisor and only the member themself otherwise", () => {
+    expect(assignableMembers(adult, members)).toEqual(members);
+    expect(assignableMembers(adult, members, steward)).toEqual(members);
+    expect(assignableMembers(adult, members, participant)).toEqual([adult]);
+    expect(assignableMembers(child, members)).toEqual([child]);
+    expect(assignableMembers(null, members, participant)).toEqual([]);
+  });
+
+  it("saves a supervisor's choice, including unassigned", () => {
+    expect(savedAssigneeId("a2", adult)).toBe("a2");
+    expect(savedAssigneeId("", adult)).toBe(null);
+    expect(savedAssigneeId(null, adult, steward)).toBe(null);
+    expect(savedAssigneeId("c1", adult, steward)).toBe("c1");
+  });
+
+  it("saves anyone else's task under their own id", () => {
+    expect(savedAssigneeId("a2", adult, participant)).toBe("a1");
+    expect(savedAssigneeId(null, adult, participant)).toBe("a1");
+    expect(savedAssigneeId("a1", child)).toBe("c1");
+    expect(savedAssigneeId("a2", null, participant)).toBe(null);
   });
 });
