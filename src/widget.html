@@ -118,6 +118,7 @@
       padding: 12px;
       text-align: center;
     }
+    .load-error { margin: 8px; padding: 8px 10px; border-radius: 10px; background: var(--hub-tint-danger, #fee2e2); color: var(--hub-tint-danger-fg, #b91c1c); font-size: 0.8rem; }
   </style>
 </head>
 <body>
@@ -193,9 +194,13 @@ async function load() {
   render();
 }
 
+// Said above the list after a completion whose follow-up did not save.
+let notice = "";
+
 async function toggleTask(id) {
   if (completing.has(id)) return;
   completing.add(id);
+  notice = "";
 
   const t = tasks.find(t => t.id === id);
   if (!t) { completing.delete(id); return; }
@@ -225,10 +230,19 @@ async function toggleTask(id) {
     await publishEvent("task.completed", id, taskCompletedPayload(t, ME?.id, completedAt));
     const next = nextOccurrence(t);
     if (next) {
+      let scheduled = false;
       try {
         await createTask(next);
-        await load();
-      } catch { /* the completion itself is saved */ }
+        scheduled = true;
+      } catch (e) {
+        // The completion itself is saved; only the next occurrence is missing.
+        console.error(e);
+        notice = "Task completed, but its next occurrence couldn’t be scheduled.";
+        render();
+      }
+      if (scheduled) {
+        try { await load(); } catch { /* the completion itself is saved */ }
+      }
     }
   }
   completing.delete(id);
@@ -291,7 +305,8 @@ function render() {
       <a class="open-link" href="/run/${APP_ID}">All tasks →</a>
     </div>`;
 
-  document.body.innerHTML = header + content + footer;
+  const note = notice ? `<div class="load-error" role="alert">${esc(notice)}</div>` : "";
+  document.body.innerHTML = header + note + content + footer;
 }
 
 window.doToggle = id => toggleTask(id).catch(() => {});
@@ -299,8 +314,8 @@ window.doToggle = id => toggleTask(id).catch(() => {});
 load().catch(() => {
   document.body.innerHTML = `
     <div class="header"><span class="header-title">${glyph("checklist")} Tasks</span></div>
+    <div class="load-error" data-testid="load-error" role="alert">Couldn’t load your tasks.</div>
     <div class="empty">
-      <span>Couldn’t load tasks</span>
       <a href="/run/${APP_ID}" style="color:#111827;font-weight:600;font-size:11px">Open app →</a>
     </div>`;
 });

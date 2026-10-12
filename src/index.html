@@ -396,6 +396,12 @@ async function readSynced(url) {
   } catch { return null; }
 }
 
+// One request for the synced tasks, for the first load and every re-read after
+// a sync, so the list is the same set either way.
+function syncedTasksUrl() {
+  return `/api/tasks${ME?.id ? `?memberId=${encodeURIComponent(ME.id)}` : ""}`;
+}
+
 // A failed re-read keeps what the page already holds.
 function applySynced(tasksRes, connRes) {
   if (tasksRes) syncedTasks = tasksRes;
@@ -404,7 +410,7 @@ function applySynced(tasksRes, connRes) {
 }
 
 async function retrySynced() {
-  const [tasksRes, connRes] = await Promise.all([readSynced(`/api/tasks${ME?.id ? `?memberId=${encodeURIComponent(ME.id)}` : ""}`), readSynced("/api/tasks/connections")]);
+  const [tasksRes, connRes] = await Promise.all([readSynced(syncedTasksUrl()), readSynced("/api/tasks/connections")]);
   applySynced(tasksRes, connRes);
   render();
 }
@@ -414,7 +420,7 @@ async function load() {
   await initDB();
   const [ctxRes, tasksRes, connRes, { listsRes, localRes, subRes, inboxRes }] = await Promise.all([
     loadMembers(),
-    readSynced(`/api/tasks${ME?.id ? `?memberId=${encodeURIComponent(ME.id)}` : ""}`),
+    readSynced(syncedTasksUrl()),
     readSynced("/api/tasks/connections"),
     readLocal(),
   ]);
@@ -493,23 +499,20 @@ async function completeTask(id) {
   // exists.
   let recurrenceCloneId = null;
 
-  showToast(
-    newCompleted ? "Task completed" : "Marked incomplete",
-    newCompleted ? "Undo" : null,
-    async () => {
-      task.completed = wasCompleted ? 1 : 0;
-      task.completed_at = origCompletedAt;
+  const undo = async () => {
+    task.completed = wasCompleted ? 1 : 0;
+    task.completed_at = origCompletedAt;
+    render();
+    await updateTask(id, { completed: wasCompleted ? 1 : 0, completed_at: origCompletedAt });
+    if (recurrenceCloneId) {
+      const cloneId = recurrenceCloneId;
+      recurrenceCloneId = null;
+      await deleteTask(cloneId);
+      await reloadLocal();
       render();
-      await updateTask(id, { completed: wasCompleted ? 1 : 0, completed_at: origCompletedAt });
-      if (recurrenceCloneId) {
-        const cloneId = recurrenceCloneId;
-        recurrenceCloneId = null;
-        await deleteTask(cloneId);
-        await reloadLocal();
-        render();
-      }
     }
-  );
+  };
+  showToast(newCompleted ? "Task completed" : "Marked incomplete", newCompleted ? "Undo" : null, undo);
 
   try {
     // Changed nothing: reassigned away or deleted since this page read it.
@@ -535,6 +538,13 @@ async function completeTask(id) {
     if (next) {
       try {
         recurrenceCloneId = await createTask(next);
+      } catch (e) {
+        // The completion is saved and stays; only the follow-up is missing.
+        console.error(e);
+        showToast("Task completed, but its next occurrence couldn’t be scheduled.", "Undo", undo);
+        return;
+      }
+      try {
         await reloadLocal();
         render();
       } catch {}
@@ -584,7 +594,7 @@ async function syncAll() {
   await Promise.all(connections.map(c =>
     fetch(`/api/tasks/connections/${c.id}/sync`, { method: "POST" }).catch(() => {})
   ));
-  const [tasksRes, connRes] = await Promise.all([readSynced("/api/tasks"), readSynced("/api/tasks/connections")]);
+  const [tasksRes, connRes] = await Promise.all([readSynced(syncedTasksUrl()), readSynced("/api/tasks/connections")]);
   applySynced(tasksRes, connRes);
   btn.disabled = false; btn.textContent = "Sync now";
   render();
@@ -593,7 +603,7 @@ async function syncAll() {
 
 async function syncConnection(id) {
   await fetch(`/api/tasks/connections/${id}/sync`, { method: "POST" }).catch(() => {});
-  const [tasksRes, connRes] = await Promise.all([readSynced("/api/tasks"), readSynced("/api/tasks/connections")]);
+  const [tasksRes, connRes] = await Promise.all([readSynced(syncedTasksUrl()), readSynced("/api/tasks/connections")]);
   applySynced(tasksRes, connRes);
   render();
   showToast(syncedFailed ? "Couldn’t load synced tasks" : "Synced");
