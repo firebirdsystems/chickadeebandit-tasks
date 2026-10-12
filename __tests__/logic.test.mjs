@@ -6,6 +6,7 @@ import {
   isOverdue, isToday, isTomorrow, isUpcoming, formatDue,
   nextDueDate, sortTasks, searchableFields,
   supervisesTasks, assignableMembers, savedAssigneeId,
+  nextOccurrence, taskInsert, taskCreatedPayload, taskCompletedPayload,
 } from "../src/logic.js";
 
 const TODAY = "2025-06-15"; // Sunday
@@ -202,6 +203,74 @@ describe("nextDueDate", () => {
 
   it("advances by 1 year for yearly recurrence", () => {
     expect(nextDueDate("2025-06-15", { freq: "yearly" })).toBe("2026-06-15");
+  });
+});
+
+// ── Completing a task (page and widget) ───────────────────────────────────────
+
+describe("nextOccurrence", () => {
+  const repeating = {
+    id: "t1", list_id: "l1", title: "Water plants", notes: "Back porch", assignee_id: "m1",
+    due_date: "2025-06-15", due_time: "08:00", priority: 2, labels: '["home"]',
+    recurrence: '{"freq":"weekly"}', completed: 1,
+  };
+
+  it("carries the task forward to its next due date", () => {
+    expect(nextOccurrence(repeating)).toEqual({
+      list_id: "l1", title: "Water plants", notes: "Back porch", assignee_id: "m1",
+      due_date: "2025-06-22", due_time: "08:00", priority: 2, labels: ["home"],
+      recurrence: { freq: "weekly" }, parent_id: null,
+    });
+  });
+
+  it("is null for a task that does not repeat or has no due date", () => {
+    expect(nextOccurrence({ ...repeating, recurrence: null })).toBeNull();
+    expect(nextOccurrence({ ...repeating, due_date: null })).toBeNull();
+    expect(nextOccurrence(null)).toBeNull();
+  });
+
+  it("is null for a rule that cannot be read", () => {
+    expect(nextOccurrence({ ...repeating, recurrence: "{not json" })).toBeNull();
+  });
+});
+
+describe("taskInsert", () => {
+  it("binds one value per placeholder, in column order", () => {
+    const { sql, params } = taskInsert("t2", {
+      list_id: "l1", title: "Water plants", notes: "Back porch", due_date: "2025-06-22",
+      due_time: "08:00", priority: 2, labels: ["home"], recurrence: { freq: "weekly" }, parent_id: null,
+    }, "m1", "m9", "2025-06-15T10:00:00.000Z");
+    expect(sql).toMatch(/^INSERT INTO app_tasks__tasks \(/);
+    expect(params.length).toBe((sql.match(/\?/g) ?? []).length);
+    expect(params).toEqual([
+      "t2", "l1", "Water plants", "Back porch", "m1", "2025-06-22", "08:00", 2,
+      '["home"]', '{"freq":"weekly"}', null, "m9", "2025-06-15T10:00:00.000Z", "2025-06-15T10:00:00.000Z",
+    ]);
+  });
+
+  it("stores the empty defaults for a bare task", () => {
+    const { params } = taskInsert("t3", { title: "Call plumber" }, null, null, "ts");
+    expect(params).toEqual(["t3", null, "Call plumber", "", null, null, null, 0, "[]", null, null, null, "ts", "ts"]);
+  });
+});
+
+describe("event payloads", () => {
+  const t = { id: "t1", title: "Secret", notes: "Private", assignee_id: "m1", list_id: "l1", due_date: "2025-06-15" };
+
+  it("task.completed carries ids and dates, never the task's text", () => {
+    const payload = taskCompletedPayload(t, "m2", "2025-06-15T10:00:00.000Z");
+    expect(payload).toEqual({
+      task_id: "t1", assignee_id: "m1", completed_by: "m2", list_id: "l1",
+      due_date: "2025-06-15", completed_at: "2025-06-15T10:00:00.000Z",
+    });
+    expect(JSON.stringify(payload)).not.toMatch(/Secret|Private/);
+  });
+
+  it("task.created carries the saved assignee and omits what is unset", () => {
+    expect(taskCreatedPayload("t2", { title: "Secret", due_date: "2025-06-22" }, "m1", "m2")).toEqual({
+      task_id: "t2", assignee_id: "m1", list_id: undefined, due_date: "2025-06-22", created_by: "m2",
+    });
+    expect(JSON.stringify(taskCreatedPayload("t2", { title: "Secret" }, null, null))).toBe('{"task_id":"t2"}');
   });
 });
 

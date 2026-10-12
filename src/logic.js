@@ -72,6 +72,70 @@ export function nextDueDate(dueDate, rule) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/**
+ * The task a repeating task leaves behind when it is completed: the same task
+ * on its next due date. Null when the task does not repeat, has no due date to
+ * count from, or carries a rule that cannot be read.
+ */
+export function nextOccurrence(task) {
+  if (!task?.recurrence || !task.due_date) return null;
+  let rule;
+  try { rule = typeof task.recurrence === "string" ? JSON.parse(task.recurrence) : task.recurrence; } catch { return null; }
+  const nextDate = nextDueDate(task.due_date, rule);
+  if (!nextDate) return null;
+  return {
+    list_id: task.list_id,
+    title: task.title,
+    notes: task.notes,
+    assignee_id: task.assignee_id,
+    due_date: nextDate,
+    due_time: task.due_time,
+    priority: task.priority,
+    labels: parseLabels(task.labels),
+    recurrence: rule,
+    parent_id: null,
+  };
+}
+
+/** The statement that stores a new task, shared by the page and the widget. */
+export function taskInsert(id, fields, assigneeId, memberId, ts) {
+  return {
+    sql: `INSERT INTO app_tasks__tasks (id,list_id,title,notes,assignee_id,due_date,due_time,priority,labels,recurrence,completed,parent_id,created_by,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?,?,?)`,
+    params: [id, fields.list_id||null, fields.title, fields.notes||"",
+     assigneeId, fields.due_date||null, fields.due_time||null,
+     fields.priority||0, JSON.stringify(fields.labels||[]),
+     fields.recurrence ? JSON.stringify(fields.recurrence) : null,
+     fields.parent_id||null, memberId||null, ts, ts],
+  };
+}
+
+/**
+ * Event payloads carry ids and dates only, never the task title or notes.
+ * Tasks are `owner_only` on assignee_id, so their text is visible to one
+ * member, while the event bus is household-wide.
+ */
+export function taskCreatedPayload(id, fields, assigneeId, memberId) {
+  return {
+    task_id: id,
+    assignee_id: assigneeId || undefined,
+    list_id: fields.list_id || undefined,
+    due_date: fields.due_date || undefined,
+    created_by: memberId || undefined,
+  };
+}
+
+export function taskCompletedPayload(task, memberId, completedAt) {
+  return {
+    task_id: task.id,
+    assignee_id: task.assignee_id || undefined,
+    completed_by: memberId || undefined,
+    list_id: task.list_id || undefined,
+    due_date: task.due_date || undefined,
+    completed_at: completedAt || undefined,
+  };
+}
+
 export function sortTasks(tasks) {
   return [...tasks].sort((a, b) => {
     const aDate = a.due_date || "9999";

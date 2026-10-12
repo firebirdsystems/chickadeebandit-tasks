@@ -123,11 +123,16 @@
 <body>
 <script type="module">
 import { esc, glyph, chickadee } from "/hub-sdk.js";
-import { isOverdue, isToday, todayStr, parseLabels } from "./logic.js";
+import {
+  isOverdue, isToday, todayStr, parseLabels,
+  savedAssigneeId, nextOccurrence, taskInsert, taskCreatedPayload, taskCompletedPayload,
+} from "./logic.js";
 
 const DB         = window.__DB_URL ?? "";
 const APP_ID     = window.__APP_ID ?? "tasks";
 const ME         = window.__CURRENT_MEMBER ?? null;
+const EVENTS_URL = window.__EVENTS_URL ?? "";
+const TENANT     = { tenantKind: window.__TENANT_KIND ?? "household", isAdmin: window.__IS_ADMIN === true };
 
 let tasks = [];
 let completing = new Set();
@@ -141,21 +146,43 @@ async function dbq(sql, params = []) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sql, params }),
     });
-    const json = await res.json();
+    const json = await res.json().catch(() => null);
     // The hub reports a refused write as a JSON body with an `error` key
     // (403 row policy, 400 bad statement, 507 over quota). fetch() does not
     // reject on those, so without this throw every caller's rollback and
     // error toast below is unreachable code.
-    if (!res.ok || json.error) throw new Error(json.error || `Database request failed (${res.status})`);
+    if (!res.ok || !json || typeof json !== "object" || json.error) throw new Error(json?.error || `Database request failed (${res.status})`);
     return json;
   }
+}
+
+/** Fire-and-forget publish, as the page does it: ids and dates only. */
+async function publishEvent(type, subjectId, payload = {}) {
+  if (!EVENTS_URL) return;
+  await fetch(EVENTS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type, subject_id: subjectId, payload }),
+  }).catch(() => {});
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+async function createTask(fields) {
+  const id = uid();
+  const ts = new Date().toISOString();
+  const assigneeId = savedAssigneeId(fields.assignee_id, ME, TENANT);
+  const insert = taskInsert(id, fields, assigneeId, ME?.id, ts);
+  await dbq(insert.sql, insert.params);
+  await publishEvent("task.created", id, taskCreatedPayload(id, fields, assigneeId, ME?.id));
+  return id;
 }
 
 async function load() {
   if (!ME?.id) { render(); return; }
 
   const { rows } = await dbq(
-    `SELECT id, title, due_date, priority, completed, assignee_id, created_by
+    `SELECT id, list_id, title, notes, due_date, due_time, priority, labels, recurrence, completed, assignee_id, created_by
      FROM app_tasks__tasks
      WHERE parent_id IS NULL
        AND (assignee_id = ? OR (assignee_id IS NULL AND created_by = ?) OR (assignee_id IS NULL AND created_by IS NULL))
@@ -174,13 +201,36 @@ async function toggleTask(id) {
   if (!t) { completing.delete(id); return; }
 
   const newVal = t.completed ? 0 : 1;
+  const completedAt = newVal ? new Date().toISOString() : null;
   t.completed = newVal;
   render();
 
-  await dbq(
-    `UPDATE app_tasks__tasks SET completed = ?, completed_at = ?, updated_at = ? WHERE id = ?`,
-    [newVal, newVal ? new Date().toISOString() : null, new Date().toISOString(), id]
-  );
+  // A refused write, or one the hub narrowed to nothing (the task was
+  // reassigned or deleted), puts the row back as it was.
+  let saved = false;
+  try {
+    const res = await dbq(
+      `UPDATE app_tasks__tasks SET completed = ?, completed_at = ?, updated_at = ? WHERE id = ?`,
+      [newVal, completedAt, new Date().toISOString(), id]
+    );
+    saved = !DB || res?.changed !== 0;
+  } catch { /* saved stays false */ }
+  if (!saved) {
+    t.completed = newVal ? 0 : 1;
+    render();
+  } else if (newVal) {
+    // The same follow-up as completing in the app: announce it, and leave a
+    // repeating task's next occurrence behind. Un-completing announces
+    // nothing, since the bus has no retraction.
+    await publishEvent("task.completed", id, taskCompletedPayload(t, ME?.id, completedAt));
+    const next = nextOccurrence(t);
+    if (next) {
+      try {
+        await createTask(next);
+        await load();
+      } catch { /* the completion itself is saved */ }
+    }
+  }
   completing.delete(id);
 }
 
@@ -246,7 +296,14 @@ function render() {
 
 window.doToggle = id => toggleTask(id).catch(() => {});
 
-load().catch(() => {});
+load().catch(() => {
+  document.body.innerHTML = `
+    <div class="header"><span class="header-title">${glyph("checklist")} Tasks</span></div>
+    <div class="empty">
+      <span>Couldn’t load tasks</span>
+      <a href="/run/${APP_ID}" style="color:#111827;font-weight:600;font-size:11px">Open app →</a>
+    </div>`;
+});
 </script>
 </body>
 </html>

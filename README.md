@@ -9,7 +9,7 @@ Full-featured family task manager. Create tasks with due dates, priorities, labe
 - Create tasks with due dates, priorities (urgent / high / normal / low), and labels
 - Recurring tasks with flexible schedules
 - Subtasks and task dependencies
-- Assign tasks to any family member
+- Assign tasks to any family member (in a shared space, the steward assigns; everyone else adds tasks for themself)
 - Syncs with Google Tasks and Apple Reminders via hub settings
 - Filter and sort by assignee, priority, due date, or label
 
