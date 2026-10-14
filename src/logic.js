@@ -194,17 +194,20 @@ export const NEXT_OCCURRENCE_FAILED = "Task completed, but its next occurrence c
  * only, so anyone else picking it would hide the list from themselves and
  * everyone else. Mirrors the manifest (lists.column_write_acls.visibility,
  * writable_by ["owner"]), under which the hub drops a non-owner's whole UPDATE
- * that names the column. A new list is its creator's, and with no member there
- * is no hub to refuse the write (demo mode).
+ * that names the column. A new list is its creator's. With no member, every
+ * list is "yours" only in demo mode (`demo`: no hub to refuse the write);
+ * against a hub a member-less caller owns nothing, and every write is refused.
  */
-export function ownsList(list, member) {
-  return !list?.id || !member?.id || list.member_id === member.id;
+export function ownsList(list, member, { demo = false } = {}) {
+  if (!list?.id) return true;
+  if (!member?.id) return demo;
+  return list.member_id === member.id;
 }
 
 /** The columns an edit to a list writes: visibility only from its owner, or
  *  the hub's owner guard would drop the rename with it. */
-export function listUpdateFields(list, member, { name, color, visibility }) {
-  return ownsList(list, member) ? { name, color, visibility } : { name, color };
+export function listUpdateFields(list, member, { name, color, visibility }, opts) {
+  return ownsList(list, member, opts) ? { name, color, visibility } : { name, color };
 }
 
 /**
@@ -213,8 +216,8 @@ export function listUpdateFields(list, member, { name, color, visibility }) {
  * supervisor's. A list whose owner is not among the members (none recorded, or
  * they have left) is a supervisor's alone.
  */
-export function canDeleteList(list, member, supervises) {
-  return ownsList(list, member) || supervises === true;
+export function canDeleteList(list, member, supervises, opts) {
+  return ownsList(list, member, opts) || supervises === true;
 }
 
 /**

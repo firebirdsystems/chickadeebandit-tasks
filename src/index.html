@@ -1553,7 +1553,7 @@ function openListModal(list, isNew) {
     </div>
     <div class="field">
       <label>Visibility</label>
-      ${ownsList(ln, ME) ? `<select id="lf-visibility">
+      ${ownsList(ln, ME, { demo: !DB }) ? `<select id="lf-visibility">
         <option value="private" ${ln.visibility!=="everyone"?'selected':''}>Private (only me)</option>
         <option value="everyone" ${ln.visibility==="everyone"?'selected':''}>Everyone</option>
       </select>` : `<div class="muted" data-testid="list-visibility-fixed">Everyone. ${memberById(ln.member_id) ? `Only ${esc(memberName(ln.member_id))} can make this list private.` : SUPERVISES_LIST_DELETES ? "This list has no owner here, so it stays shared." : "This list has no owner here, so it stays shared and you can’t delete it."}</div>`}
@@ -1561,7 +1561,7 @@ function openListModal(list, isNew) {
   `;
   document.getElementById("list-modal-footer").innerHTML = `
     <div>
-      ${!isNew && canDeleteList(ln, ME, SUPERVISES_LIST_DELETES) ? `<button class="btn-danger" onclick="confirmDeleteList(${jsArg(ln.id)})">Delete</button>` : ""}
+      ${!isNew && canDeleteList(ln, ME, SUPERVISES_LIST_DELETES, { demo: !DB }) ? `<button class="btn-danger" onclick="confirmDeleteList(${jsArg(ln.id)})">Delete</button>` : ""}
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn-ghost" onclick="closeListModal()">Cancel</button>
@@ -1600,7 +1600,7 @@ window.saveList = async function(isNew) {
   try {
     if (isNew) {
       await createList(name, color, visibility);
-    } else if (!(await updateList(listModalData.id, listUpdateFields(listModalData, ME, { name, color, visibility })))) {
+    } else if (!(await updateList(listModalData.id, listUpdateFields(listModalData, ME, { name, color, visibility }, { demo: !DB })))) {
       // Changed nothing: deleted, or made private by its owner, since this
       // page read it.
       closeListModal();

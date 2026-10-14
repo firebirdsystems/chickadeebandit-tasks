@@ -380,7 +380,10 @@ describe("who may change a list", () => {
     expect(ownsList(theirs, me)).toBe(false);
     expect(ownsList(ownerless, me)).toBe(false);
     expect(ownsList({ id: null, member_id: null }, me)).toBe(true);
-    expect(ownsList(theirs, null)).toBe(true);
+    // No member: every list is yours only in demo mode; against a hub, none is.
+    expect(ownsList(theirs, null, { demo: true })).toBe(true);
+    expect(ownsList(theirs, null)).toBe(false);
+    expect(canDeleteList(theirs, null, false)).toBe(false);
   });
 
   it("only the owner's edit names visibility, which the hub would refuse from anyone else", () => {
