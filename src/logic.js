@@ -184,3 +184,35 @@ export function savedAssigneeId(chosenId, member, tenant) {
   if (supervisesTasks(member, tenant)) return chosenId || null;
   return member?.id ?? null;
 }
+
+/** Said by the app and the widget when a completion saved but the repeating
+ *  task's next occurrence did not. */
+export const NEXT_OCCURRENCE_FAILED = "Task completed, but its next occurrence couldn’t be scheduled.";
+
+/**
+ * Whether who sees a list is this member's choice. "private" means the OWNER
+ * only, so anyone else picking it would hide the list from themselves and
+ * everyone else. Mirrors the manifest (lists.column_write_acls.visibility,
+ * writable_by ["owner"]), under which the hub drops a non-owner's whole UPDATE
+ * that names the column. A new list is its creator's, and with no member there
+ * is no hub to refuse the write (demo mode).
+ */
+export function ownsList(list, member) {
+  return !list?.id || !member?.id || list.member_id === member.id;
+}
+
+/** The columns an edit to a list writes: visibility only from its owner, or
+ *  the hub's owner guard would drop the rename with it. */
+export function listUpdateFields(list, member, { name, color, visibility }) {
+  return ownsList(list, member) ? { name, color, visibility } : { name, color };
+}
+
+/**
+ * Whether the page offers Delete on a list. A shared list someone else owns is
+ * theirs to delete, or a supervisor's. A list whose owner is not among the
+ * members (none recorded, or they have left) has nobody else to delete it, so
+ * anyone who sees it may.
+ */
+export function canDeleteList(list, member, members, supervises) {
+  return ownsList(list, member) || supervises === true || !members.some(m => m.id === list.member_id);
+}

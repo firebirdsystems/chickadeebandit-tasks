@@ -204,6 +204,7 @@
       background: var(--surface, var(--card, #fff)); color: var(--text, inherit);
     }
     .search-input:focus { outline: none; border-color: var(--accent, #6366f1); }
+    .muted { color: var(--muted); }
     .load-error { margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; background: var(--hub-tint-danger, #fee2e2); color: var(--hub-tint-danger-fg, #b91c1c); font-size: 0.9rem; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
     .load-error-retry { background: none; border: 1px solid currentColor; border-radius: 8px; padding: 5px 10px; font: inherit; font-weight: 600; color: inherit; cursor: pointer; flex-shrink: 0; }
   </style>
@@ -254,6 +255,7 @@ import {
   sortTasks, searchableFields,
   supervisesTasks, assignableMembers, savedAssigneeId,
   nextOccurrence, taskInsert, taskCreatedPayload, taskCompletedPayload,
+  NEXT_OCCURRENCE_FAILED, ownsList, listUpdateFields, canDeleteList,
 } from "./logic.js";
 
 const CONTEXT = window.__CONTEXT_URL ?? "";
@@ -478,6 +480,8 @@ async function deleteTask(id) {
   return !DB || res?.changed !== 0;
 }
 
+const UNDO_CLONE_LEFT = "Undone, but its next occurrence couldn’t be removed.";
+
 async function completeTask(id) {
   const task = localTasks.find(t => t.id === id);
   if (!task) return;
@@ -498,18 +502,43 @@ async function completeTask(id) {
   // a holder because the toast (and its closure) is shown before the clone
   // exists.
   let recurrenceCloneId = null;
+  // Undo can be pressed while the next occurrence is still being created.
+  let undone = false;
+  // Started before the toast offers Undo, so undo can wait for it: sent side
+  // by side, the two writes could land in either order and leave the task
+  // completed under a page showing it open.
+  const completion = updateTask(id, { completed: newCompleted, completed_at: completedAt });
 
   const undo = async () => {
     task.completed = wasCompleted ? 1 : 0;
     task.completed_at = origCompletedAt;
     render();
-    await updateTask(id, { completed: wasCompleted ? 1 : 0, completed_at: origCompletedAt });
+    // Nothing to undo when the completion did not save; that path has already
+    // put the row back and said why.
+    if (!(await completion.catch(() => false))) return;
+    let saved = false;
+    try {
+      saved = await updateTask(id, { completed: wasCompleted ? 1 : 0, completed_at: origCompletedAt });
+    } catch { /* saved stays false */ }
+    if (!saved) {
+      return void undoOptimistic("Could not undo that.", () => {
+        task.completed = newCompleted;
+        task.completed_at = completedAt;
+      });
+    }
+    // Only now: a failed undo leaves the task completed, and its next
+    // occurrence has to stay with it.
+    undone = true;
     if (recurrenceCloneId) {
-      const cloneId = recurrenceCloneId;
-      recurrenceCloneId = null;
-      await deleteTask(cloneId);
-      await reloadLocal();
-      render();
+      // The undo itself is saved; the id is kept until the occurrence is gone.
+      try {
+        await deleteTask(recurrenceCloneId);
+        recurrenceCloneId = null;
+        await reloadLocal();
+        render();
+      } catch {
+        showToast(UNDO_CLONE_LEFT);
+      }
     }
   };
   showToast(newCompleted ? "Task completed" : "Marked incomplete", newCompleted ? "Undo" : null, undo);
@@ -518,7 +547,7 @@ async function completeTask(id) {
     // Changed nothing: reassigned away or deleted since this page read it.
     // Nothing was completed, so nothing is announced and no next occurrence
     // is made.
-    if (!(await updateTask(id, { completed: newCompleted, completed_at: completedAt }))) {
+    if (!(await completion)) {
       return void undoOptimistic("That task is no longer yours to change.", () => {
         task.completed = wasCompleted ? 1 : 0;
         task.completed_at = origCompletedAt;
@@ -536,13 +565,23 @@ async function completeTask(id) {
     // Handle recurrence: when marking complete, clone with next due date
     const next = newCompleted ? nextOccurrence(task) : null;
     if (next) {
+      // The id is chosen here, not taken from the resolved call: an insert
+      // whose answer was lost still landed, and undo has to be able to name it.
+      const cloneId = recurrenceCloneId = uid();
       try {
-        recurrenceCloneId = await createTask(next);
+        await createTask(next, cloneId);
       } catch (e) {
         // The completion is saved and stays; only the follow-up is missing.
         console.error(e);
-        showToast("Task completed, but its next occurrence couldn’t be scheduled.", "Undo", undo);
-        return;
+        if (!undone) return void showToast(NEXT_OCCURRENCE_FAILED, "Undo", undo);
+      }
+      // Undone while the insert was in flight: its delete may have run first.
+      // That holds for a rejected insert too, which may still have landed.
+      if (undone) {
+        try { await deleteTask(cloneId); } catch {
+          // Shown in the list by the re-read below, where it can be deleted.
+          showToast(UNDO_CLONE_LEFT);
+        }
       }
       try {
         await reloadLocal();
@@ -571,9 +610,11 @@ async function createList(name, color, visibility) {
   return id;
 }
 
+/** Resolves to false when the hub changed nothing (see updateTask). */
 async function updateList(id, fields) {
   const sets = Object.keys(fields).map(k => `${k}=?`).join(",");
-  await dbRun(`UPDATE app_tasks__lists SET ${sets} WHERE id=?`, [...Object.values(fields), id]);
+  const res = await dbRun(`UPDATE app_tasks__lists SET ${sets} WHERE id=?`, [...Object.values(fields), id]);
+  return !DB || res?.changed !== 0;
 }
 
 async function deleteList(id) {
@@ -1508,15 +1549,15 @@ function openListModal(list, isNew) {
     </div>
     <div class="field">
       <label>Visibility</label>
-      ${ownsList(ln) ? `<select id="lf-visibility">
+      ${ownsList(ln, ME) ? `<select id="lf-visibility">
         <option value="private" ${ln.visibility!=="everyone"?'selected':''}>Private (only me)</option>
         <option value="everyone" ${ln.visibility==="everyone"?'selected':''}>Everyone</option>
-      </select>` : `<div class="muted" data-testid="list-visibility-fixed">Everyone. Only ${esc(memberName(ln.member_id))} can make this list private.</div>`}
+      </select>` : `<div class="muted" data-testid="list-visibility-fixed">Everyone. ${memberById(ln.member_id) ? `Only ${esc(memberName(ln.member_id))} can make this list private.` : "This list has no owner here, so it stays shared."}</div>`}
     </div>
   `;
   document.getElementById("list-modal-footer").innerHTML = `
     <div>
-      ${!isNew ? `<button class="btn-danger" onclick="confirmDeleteList(${jsArg(ln.id)})">Delete</button>` : ""}
+      ${!isNew && canDeleteList(ln, ME, members, SUPERVISES) ? `<button class="btn-danger" onclick="confirmDeleteList(${jsArg(ln.id)})">Delete</button>` : ""}
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn-ghost" onclick="closeListModal()">Cancel</button>
@@ -1525,13 +1566,6 @@ function openListModal(list, isNew) {
   document.getElementById("list-modal").style.display = "flex";
   setTimeout(() => { const el = document.getElementById("lf-name"); if (el) { el.focus(); el.select(); } }, 50);
 }
-
-// Who sees a list is its owner's choice alone: "private" means the OWNER only,
-// so anyone else picking it would hide the list from themselves and everyone
-// else. Mirrors the manifest (lists.column_write_acls.visibility, writable_by
-// ["owner"]), under which the hub drops a non-owner's whole UPDATE that names
-// the column.
-function ownsList(list) { return !list?.id || list.member_id === ME?.id; }
 
 window.openNewList = function() { openListModal(null, true); };
 
@@ -1562,8 +1596,11 @@ window.saveList = async function(isNew) {
   try {
     if (isNew) {
       await createList(name, color, visibility);
-    } else {
-      await updateList(listModalData.id, ownsList(listModalData) ? { name, color, visibility } : { name, color });
+    } else if (!(await updateList(listModalData.id, listUpdateFields(listModalData, ME, { name, color, visibility })))) {
+      // Changed nothing: deleted, or made private by its owner, since this
+      // page read it.
+      closeListModal();
+      return void undoOptimistic("That list is no longer yours to change.");
     }
   } catch {
     if (btn) { btn.disabled = false; btn.textContent = "Save"; }

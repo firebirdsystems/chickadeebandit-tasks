@@ -7,6 +7,7 @@ import {
   nextDueDate, sortTasks, searchableFields,
   supervisesTasks, assignableMembers, savedAssigneeId,
   nextOccurrence, taskInsert, taskCreatedPayload, taskCompletedPayload,
+  ownsList, listUpdateFields, canDeleteList,
 } from "../src/logic.js";
 
 const TODAY = "2025-06-15"; // Sunday
@@ -362,5 +363,37 @@ describe("who supervises tasks", () => {
     expect(savedAssigneeId(null, adult, participant)).toBe("a1");
     expect(savedAssigneeId("a1", child)).toBe("c1");
     expect(savedAssigneeId("a2", null, participant)).toBe(null);
+  });
+});
+
+describe("who may change a list", () => {
+  const me = { id: "a1" };
+  const members = [me, { id: "a2" }];
+  const mine = { id: "l1", member_id: "a1", visibility: "everyone" };
+  const theirs = { id: "l2", member_id: "a2", visibility: "everyone" };
+  const ownerless = { id: "l3", member_id: null, visibility: "everyone" };
+  const departed = { id: "l4", member_id: "gone", visibility: "everyone" };
+  const edit = { name: "Groceries", color: "#2563eb", visibility: "private" };
+
+  it("a list is its owner's, a new list its creator's, and any list the demo's", () => {
+    expect(ownsList(mine, me)).toBe(true);
+    expect(ownsList(theirs, me)).toBe(false);
+    expect(ownsList(ownerless, me)).toBe(false);
+    expect(ownsList({ id: null, member_id: null }, me)).toBe(true);
+    expect(ownsList(theirs, null)).toBe(true);
+  });
+
+  it("only the owner's edit names visibility, which the hub would refuse from anyone else", () => {
+    expect(listUpdateFields(mine, me, edit)).toEqual(edit);
+    expect(listUpdateFields(theirs, me, edit)).toEqual({ name: "Groceries", color: "#2563eb" });
+    expect(listUpdateFields(ownerless, me, edit)).toEqual({ name: "Groceries", color: "#2563eb" });
+  });
+
+  it("offers Delete to the owner, a supervisor, and anyone when the owner is not a member", () => {
+    expect(canDeleteList(mine, me, members, false)).toBe(true);
+    expect(canDeleteList(theirs, me, members, false)).toBe(false);
+    expect(canDeleteList(theirs, me, members, true)).toBe(true);
+    expect(canDeleteList(ownerless, me, members, false)).toBe(true);
+    expect(canDeleteList(departed, me, members, false)).toBe(true);
   });
 });
