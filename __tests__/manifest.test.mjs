@@ -83,15 +83,15 @@ describe("manifest.json", () => {
     expect(manifest.row_policies?.tasks).toEqual({
       kind: "owner_only",
       member_column: "assignee_id",
-      retain_days: {
-        default: 365,
-        timestamp_column: "completed_at",
-        override_key: "completed_tasks",
-        // A completed task is tidy-up, not a family record, so a record-mode
-        // space (co-parenting) leaves this window alone instead of applying its
-        // seven-year evidentiary floor.
-        tier: "operational",
-      },
+    });
+    expect(manifest.retention?.tasks).toEqual({
+      default: 365,
+      timestamp_column: "completed_at",
+      override_key: "completed_tasks",
+      // A completed task is tidy-up, not a family record, so a record-mode
+      // space (co-parenting) leaves this window alone instead of applying its
+      // seven-year evidentiary floor.
+      tier: "operational",
     });
     expect(manifest.db_plaintext_columns).toContain("due_date");
   });
@@ -419,13 +419,13 @@ describe.skipIf(!manifest.automation_actions)("automation_actions match the migr
 
 // ── retention ────────────────────────────────────────────────────────────────
 //
-// The hub refuses a `retain_days` declaration whose timestamp column has no
+// The hub refuses a `retention` declaration whose timestamp column has no
 // index LEADING with it, and it refuses one whose columns are missing from the
 // migrations. Both failures land at install/publish time rather than in review,
 // so they are asserted here.
 
-describe("retain_days matches the migrations", () => {
-  const retain = manifest.row_policies.tasks.retain_days;
+describe("retention matches the migrations", () => {
+  const retain = manifest.retention.tasks;
   const schema = migrationSchema();
   const rawSql = readdirSync(join(__dirname, "../migrations"))
     .filter((f) => f.endsWith(".sql"))
