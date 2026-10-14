@@ -41,7 +41,11 @@
       "member_column": "member_id",
       "visibility_column": "visibility",
       "everyone_values": ["everyone"],
-      "write_visibility_scoped": true
+      "write_visibility_scoped": true,
+      "column_write_acls": {
+        "member_id": { "writable_by": [], "actions": ["update"] },
+        "visibility": { "writable_by": ["owner"], "actions": ["update"] }
+      }
     },
     "tasks": {
       "kind": "owner_only",

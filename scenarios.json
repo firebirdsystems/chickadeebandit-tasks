@@ -251,6 +251,122 @@
           }
         }
       ]
+    },
+    {
+      "name": "a shared list is hidden or moved only by its owner: another member's attempt changes nothing",
+      "members": {
+        "owner": "adult",
+        "other": "adult",
+        "kid": "child"
+      },
+      "steps": [
+        {
+          "action": "db",
+          "as": "owner",
+          "sql": "INSERT INTO app_tasks__lists (id, name, member_id, visibility, created_at) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "l-guarded",
+            "Groceries",
+            "{{owner}}",
+            "everyone",
+            "2026-01-01T00:00:00Z"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "other",
+          "sql": "UPDATE app_tasks__lists SET name = ? WHERE id = ?",
+          "params": [
+            "Groceries (weekly)",
+            "l-guarded"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "other",
+          "sql": "UPDATE app_tasks__lists SET visibility = ? WHERE id = ?",
+          "params": [
+            "private",
+            "l-guarded"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "UPDATE app_tasks__lists SET visibility = ? WHERE id = ?",
+          "params": [
+            "private",
+            "l-guarded"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "UPDATE app_tasks__lists SET member_id = ? WHERE id = ?",
+          "params": [
+            "{{kid}}",
+            "l-guarded"
+          ],
+          "expect": {
+            "status": 403,
+            "errorIncludes": "immutable"
+          }
+        },
+        {
+          "action": "db",
+          "as": "other",
+          "sql": "SELECT name, visibility, member_id FROM app_tasks__lists WHERE id = ?",
+          "params": [
+            "l-guarded"
+          ],
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "name": "Groceries (weekly)",
+                "visibility": "everyone"
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "owner",
+          "sql": "UPDATE app_tasks__lists SET visibility = ? WHERE id = ?",
+          "params": [
+            "private",
+            "l-guarded"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "other",
+          "sql": "SELECT id FROM app_tasks__lists WHERE id = ?",
+          "params": [
+            "l-guarded"
+          ],
+          "expect": {
+            "status": 200,
+            "rowCount": 0
+          }
+        }
+      ]
     }
   ]
 }

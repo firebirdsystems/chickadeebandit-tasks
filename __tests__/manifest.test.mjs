@@ -72,7 +72,19 @@ describe("manifest.json", () => {
       visibility_column: "visibility",
       everyone_values: ["everyone"],
       write_visibility_scoped: true,
+      // write_visibility_scoped lets every member UPDATE a shared list. Without
+      // these, any of them could mark someone else's list private (hiding it
+      // from everyone but its owner) or move it to themselves first.
+      column_write_acls: {
+        member_id: { writable_by: [], actions: ["update"] },
+        visibility: { writable_by: ["owner"], actions: ["update"] },
+      },
     });
+    const html = readFileSync(join(__dirname, "../src/index.html"), "utf-8");
+    // The page leaves the column out of an edit to someone else's list, or the
+    // hub's owner guard would drop the rename with it.
+    expect(html).toContain("ownsList(listModalData) ? { name, color, visibility } : { name, color }");
+    expect(html).toContain('data-testid="list-visibility-fixed"');
     expect(manifest.row_policies?.tasks).toEqual({
       kind: "owner_only",
       member_column: "assignee_id",

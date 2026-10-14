@@ -1508,10 +1508,10 @@ function openListModal(list, isNew) {
     </div>
     <div class="field">
       <label>Visibility</label>
-      <select id="lf-visibility">
+      ${ownsList(ln) ? `<select id="lf-visibility">
         <option value="private" ${ln.visibility!=="everyone"?'selected':''}>Private (only me)</option>
         <option value="everyone" ${ln.visibility==="everyone"?'selected':''}>Everyone</option>
-      </select>
+      </select>` : `<div class="muted" data-testid="list-visibility-fixed">Everyone. Only ${esc(memberName(ln.member_id))} can make this list private.</div>`}
     </div>
   `;
   document.getElementById("list-modal-footer").innerHTML = `
@@ -1525,6 +1525,13 @@ function openListModal(list, isNew) {
   document.getElementById("list-modal").style.display = "flex";
   setTimeout(() => { const el = document.getElementById("lf-name"); if (el) { el.focus(); el.select(); } }, 50);
 }
+
+// Who sees a list is its owner's choice alone: "private" means the OWNER only,
+// so anyone else picking it would hide the list from themselves and everyone
+// else. Mirrors the manifest (lists.column_write_acls.visibility, writable_by
+// ["owner"]), under which the hub drops a non-owner's whole UPDATE that names
+// the column.
+function ownsList(list) { return !list?.id || list.member_id === ME?.id; }
 
 window.openNewList = function() { openListModal(null, true); };
 
@@ -1556,7 +1563,7 @@ window.saveList = async function(isNew) {
     if (isNew) {
       await createList(name, color, visibility);
     } else {
-      await updateList(listModalData.id, { name, color, visibility });
+      await updateList(listModalData.id, ownsList(listModalData) ? { name, color, visibility } : { name, color });
     }
   } catch {
     if (btn) { btn.disabled = false; btn.textContent = "Save"; }
