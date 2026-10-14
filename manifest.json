@@ -49,13 +49,15 @@
     },
     "tasks": {
       "kind": "owner_only",
-      "member_column": "assignee_id",
-      "retain_days": {
-        "default": 365,
-        "timestamp_column": "completed_at",
-        "override_key": "completed_tasks",
-        "tier": "operational"
-      }
+      "member_column": "assignee_id"
+    }
+  },
+  "retention": {
+    "tasks": {
+      "default": 365,
+      "timestamp_column": "completed_at",
+      "override_key": "completed_tasks",
+      "tier": "operational"
     }
   },
   "member_references": {
@@ -208,9 +210,6 @@
   "widget": {
     "label": "Tasks",
     "size": "small"
-  },
-  "resource_limits": {
-    "max_db_bytes": 104857600
   },
   "icon": "✅",
   "ai_access": {
