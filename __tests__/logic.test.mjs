@@ -7,7 +7,7 @@ import {
   nextDueDate, sortTasks, searchableFields,
   supervisesTasks, assignableMembers, savedAssigneeId,
   nextOccurrence, taskInsert, taskCreatedPayload, taskCompletedPayload,
-  ownsList, listUpdateFields, canDeleteList,
+  ownsList, listUpdateFields, canDeleteList, supervisesListDeletes,
 } from "../src/logic.js";
 
 const TODAY = "2025-06-15"; // Sunday
@@ -389,11 +389,25 @@ describe("who may change a list", () => {
     expect(listUpdateFields(ownerless, me, edit)).toEqual({ name: "Groceries", color: "#2563eb" });
   });
 
-  it("offers Delete to the owner, a supervisor, and anyone when the owner is not a member", () => {
-    expect(canDeleteList(mine, me, members, false)).toBe(true);
-    expect(canDeleteList(theirs, me, members, false)).toBe(false);
-    expect(canDeleteList(theirs, me, members, true)).toBe(true);
-    expect(canDeleteList(ownerless, me, members, false)).toBe(true);
-    expect(canDeleteList(departed, me, members, false)).toBe(true);
+  it("offers Delete to the owner and a supervisor only, as the hub's delete_owner_only allows", () => {
+    expect(members.some(m => m.id === departed.member_id)).toBe(false);
+    expect(canDeleteList(mine, me, false)).toBe(true);
+    expect(canDeleteList(theirs, me, false)).toBe(false);
+    expect(canDeleteList(theirs, me, true)).toBe(true);
+    expect(canDeleteList(ownerless, me, false)).toBe(false);
+    expect(canDeleteList(departed, me, false)).toBe(false);
+    expect(canDeleteList(ownerless, me, true)).toBe(true);
+    expect(canDeleteList(departed, me, true)).toBe(true);
+  });
+
+  it("a household adult or a general or roster steward deletes others' lists; a co-parenting steward does not", () => {
+    const adult = { id: "a1", role: "adult" };
+    const child = { id: "c1", role: "child" };
+    expect(supervisesListDeletes(adult)).toBe(true);
+    expect(supervisesListDeletes(child)).toBe(false);
+    expect(supervisesListDeletes(adult, { tenantKind: "shared_space", spaceKind: "general", isAdmin: true })).toBe(true);
+    expect(supervisesListDeletes(adult, { tenantKind: "shared_space", spaceKind: "roster", isAdmin: true })).toBe(true);
+    expect(supervisesListDeletes(adult, { tenantKind: "shared_space", spaceKind: "roster", isAdmin: false })).toBe(false);
+    expect(supervisesListDeletes(adult, { tenantKind: "shared_space", spaceKind: "coparenting", isAdmin: true })).toBe(false);
   });
 });

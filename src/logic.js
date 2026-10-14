@@ -208,11 +208,20 @@ export function listUpdateFields(list, member, { name, color, visibility }) {
 }
 
 /**
- * Whether the page offers Delete on a list. A shared list someone else owns is
- * theirs to delete, or a supervisor's. A list whose owner is not among the
- * members (none recorded, or they have left) has nobody else to delete it, so
- * anyone who sees it may.
+ * Whether the page offers Delete on a list. Mirrors the manifest
+ * (lists.delete_owner_only): a list is its owner's to delete, or a
+ * supervisor's. A list whose owner is not among the members (none recorded, or
+ * they have left) is a supervisor's alone.
  */
-export function canDeleteList(list, member, members, supervises) {
-  return ownsList(list, member) || supervises === true || !members.some(m => m.id === list.member_id);
+export function canDeleteList(list, member, supervises) {
+  return ownsList(list, member) || supervises === true;
+}
+
+/**
+ * Whether a member may delete other members' lists: a household adult, or the
+ * steward of a general or roster space. The hub gives a co-parenting space's
+ * steward no such exemption.
+ */
+export function supervisesListDeletes(member, tenant = {}) {
+  return supervisesTasks(member, tenant) && tenant.spaceKind !== "coparenting";
 }

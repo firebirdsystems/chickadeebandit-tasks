@@ -255,7 +255,7 @@ import {
   sortTasks, searchableFields,
   supervisesTasks, assignableMembers, savedAssigneeId,
   nextOccurrence, taskInsert, taskCreatedPayload, taskCompletedPayload,
-  NEXT_OCCURRENCE_FAILED, ownsList, listUpdateFields, canDeleteList,
+  NEXT_OCCURRENCE_FAILED, ownsList, listUpdateFields, canDeleteList, supervisesListDeletes,
 } from "./logic.js";
 
 const CONTEXT = window.__CONTEXT_URL ?? "";
@@ -268,6 +268,8 @@ const EVENTS_URL = window.__EVENTS_URL ?? "/api/events";
 // offering what would be re-stamped or come back empty.
 const TENANT = { tenantKind: window.__TENANT_KIND ?? "household", spaceKind: window.__SPACE_KIND ?? null, isAdmin: window.__IS_ADMIN === true };
 const SUPERVISES = supervisesTasks(ME, TENANT);
+// Deleting a list someone else owns (or one whose owner has left).
+const SUPERVISES_LIST_DELETES = supervisesListDeletes(ME, TENANT);
 // The tab of every member's tasks is for whoever supervises: anyone else
 // would find only their own there. It is the family at home, everyone in a space.
 const EVERYONE_LABEL = TENANT.tenantKind === "household" ? "Family" : "Everyone";
@@ -624,7 +626,9 @@ async function deleteList(id) {
   // being gone.
   await dbBatch([
     { sql: "UPDATE app_tasks__tasks SET list_id=NULL WHERE list_id=?", params: [id] },
-    { sql: "DELETE FROM app_tasks__lists WHERE id=?", params: [id] },
+    // A delete the hub narrows to nothing rolls the batch back (409), so the
+    // tasks are not pulled out of a list that stays.
+    { sql: "DELETE FROM app_tasks__lists WHERE id=?", params: [id], requireChanges: true },
   ]);
 }
 
@@ -1552,12 +1556,12 @@ function openListModal(list, isNew) {
       ${ownsList(ln, ME) ? `<select id="lf-visibility">
         <option value="private" ${ln.visibility!=="everyone"?'selected':''}>Private (only me)</option>
         <option value="everyone" ${ln.visibility==="everyone"?'selected':''}>Everyone</option>
-      </select>` : `<div class="muted" data-testid="list-visibility-fixed">Everyone. ${memberById(ln.member_id) ? `Only ${esc(memberName(ln.member_id))} can make this list private.` : "This list has no owner here, so it stays shared."}</div>`}
+      </select>` : `<div class="muted" data-testid="list-visibility-fixed">Everyone. ${memberById(ln.member_id) ? `Only ${esc(memberName(ln.member_id))} can make this list private.` : SUPERVISES_LIST_DELETES ? "This list has no owner here, so it stays shared." : "This list has no owner here, so it stays shared and you can’t delete it."}</div>`}
     </div>
   `;
   document.getElementById("list-modal-footer").innerHTML = `
     <div>
-      ${!isNew && canDeleteList(ln, ME, members, SUPERVISES) ? `<button class="btn-danger" onclick="confirmDeleteList(${jsArg(ln.id)})">Delete</button>` : ""}
+      ${!isNew && canDeleteList(ln, ME, SUPERVISES_LIST_DELETES) ? `<button class="btn-danger" onclick="confirmDeleteList(${jsArg(ln.id)})">Delete</button>` : ""}
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn-ghost" onclick="closeListModal()">Cancel</button>

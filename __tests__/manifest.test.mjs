@@ -72,6 +72,9 @@ describe("manifest.json", () => {
       visibility_column: "visibility",
       everyone_values: ["everyone"],
       write_visibility_scoped: true,
+      // A shared list is everyone's to edit but only its owner's (or a
+      // supervisor's) to delete; the page's canDeleteList mirrors this.
+      delete_owner_only: true,
       // write_visibility_scoped lets every member UPDATE a shared list. Without
       // these, any of them could mark someone else's list private (hiding it
       // from everyone but its owner) or move it to themselves first.

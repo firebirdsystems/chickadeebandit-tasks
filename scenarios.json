@@ -253,6 +253,41 @@
       ]
     },
     {
+      "name": "a shared list is deleted only by its owner or a supervisor (delete_owner_only)",
+      "members": { "kid": "child", "parent": "adult" },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_tasks__lists (id, name, member_id, visibility, created_at) VALUES (?, ?, ?, ?, ?)",
+          "params": ["l-parent", "List l-parent", "{{parent}}", "everyone", "2026-01-01T00:00:00Z"]
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_tasks__lists (id, name, member_id, visibility, created_at) VALUES (?, ?, ?, ?, ?)",
+          "params": ["l-kid", "List l-kid", "{{kid}}", "everyone", "2026-01-01T00:00:00Z"]
+        },
+        {
+          "action": "batch",
+          "as": "kid",
+          "statements": [{ "sql": "DELETE FROM app_tasks__lists WHERE id = ?", "params": ["l-parent"] }],
+          "expect": { "status": 200, "changed": [0] }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "SELECT id FROM app_tasks__lists WHERE id = ?",
+          "params": ["l-parent"],
+          "expect": { "status": 200, "rowCount": 1 }
+        },
+        {
+          "action": "batch",
+          "as": "parent",
+          "statements": [{ "sql": "DELETE FROM app_tasks__lists WHERE id = ?", "params": ["l-kid"] }],
+          "expect": { "status": 200, "changed": [1] }
+        }
+      ]
+    },
+    {
       "name": "a shared list is hidden or moved only by its owner: another member's attempt changes nothing",
       "members": {
         "owner": "adult",
@@ -321,7 +356,7 @@
           ],
           "expect": {
             "status": 403,
-            "errorIncludes": "immutable"
+            "errorIncludes": "member_id"
           }
         },
         {
